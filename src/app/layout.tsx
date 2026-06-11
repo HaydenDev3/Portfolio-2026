@@ -6,6 +6,7 @@ import SmoothScroll from "@/components/providers/SmoothScroll";
 import CursorFollower from "@/components/effects/CursorFollower";
 import ParticleField from "@/components/effects/ParticleField";
 import GradientOrb from "@/components/effects/GradientOrb";
+import ShareButton from "@/components/ShareButton";
 import { siteConfig } from "@/lib/config";
 
 const baseUrl = siteConfig.url;
@@ -141,6 +142,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <main className="relative z-10">{children}</main>
         </SmoothScroll>
+        <ShareButton />
       </body>
     </html>
   );

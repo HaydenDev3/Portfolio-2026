@@ -20,6 +20,9 @@ export const siteConfig = {
   location: process.env.NEXT_PUBLIC_LOCATION || "Your City, State",
   priceRange: process.env.NEXT_PUBLIC_PRICE_RANGE || "$500 - $5,000",
   copyright: process.env.NEXT_PUBLIC_COPYRIGHT || "Your Name",
+  shareText:
+    process.env.NEXT_PUBLIC_SHARE_TEXT ||
+    `Check out ${process.env.NEXT_PUBLIC_SITE_NAME || "this developer"} — ${process.env.NEXT_PUBLIC_TAGLINE || "Web Developer"} 👋`,
   ogImage: "/og-image.png",
   keywords: [
     process.env.NEXT_PUBLIC_SITE_NAME || "developer",
