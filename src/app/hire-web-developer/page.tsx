@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
+import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Hire a Web Developer in Australia | Hayden Ford — Freelance Web Developer",
-  description:
-    "Hire a freelance web developer in Australia. Get a fast, modern website for your small business from Gladstone's Hayden Ford. Starting from $800. Free discovery call.",
+  description: `Hire a freelance web developer in Australia. Get a fast, modern website for your small business from ${siteConfig.location}'s ${siteConfig.name}. Starting from $800. Free discovery call.`,
   openGraph: {
     title: "Hire a Web Developer in Australia — Hayden Ford",
-    description:
-      "Get a fast, modern website for your small business. Freelance web developer based in Gladstone QLD. Starting from $800.",
+    description: `Get a fast, modern website for your small business. Freelance web developer based in ${siteConfig.location}. Starting from $800.`,
   },
 };
 
@@ -20,7 +19,7 @@ const faqLd = {
       name: "How much does it cost to hire a freelance web developer in Australia?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Most freelance web developers in Australia charge between $800 and $5,500 for a small business website. My packages start at $800 for a simple site and go up to $5,500 for a full custom multi-page build. The exact price depends on the number of pages, features you need, and complexity of the design.",
+        text: `Most freelance web developers in Australia charge between $800 and $5,500 for a small business website. My packages start at $800 for a simple site and go up to $5,500 for a full custom multi-page build. The exact price depends on the number of pages, features you need, and complexity of the design.`,
       },
     },
     {
@@ -49,10 +48,10 @@ const faqLd = {
     },
     {
       "@type": "Question",
-      name: "Do you work with clients outside of Gladstone?",
+      name: `Do you work with clients outside of ${siteConfig.location}?`,
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Absolutely. I work with small business owners all across Australia — Sydney, Melbourne, Brisbane, Perth, and everywhere in between. Everything is done online through video calls and email.",
+        text: `Absolutely. I work with small business owners all across Australia — Sydney, Melbourne, Brisbane, Perth, and everywhere in between. Everything is done online through video calls and email.`,
       },
     },
     {
@@ -67,6 +66,8 @@ const faqLd = {
 };
 
 export default function HirePage() {
+  const s = siteConfig;
+
   return (
     <>
       <script
@@ -74,12 +75,11 @@ export default function HirePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
 
-      {/* Hero */}
       <section className="relative min-h-[70vh] flex items-center justify-center px-5 md:px-6 pt-32 pb-16">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-brand/5 rounded-full blur-[150px] pointer-events-none" />
         <div className="relative z-10 max-w-3xl mx-auto text-center">
           <span className="text-[10px] md:text-xs text-zinc-600 uppercase tracking-[0.3em] font-medium mb-6 block">
-            Freelance Web Developer — Gladstone, QLD
+            Freelance Web Developer — {s.location}
           </span>
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight mb-6">
             Hire a{" "}
@@ -93,7 +93,7 @@ export default function HirePage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
             <a
-              href="https://calendly.com/hayd3nford2008"
+              href={`https://calendly.com/${s.calendly}`}
               target="_blank"
               className="inline-flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 md:px-8 py-3.5 md:py-4 rounded-full font-semibold text-sm transition-all duration-300"
             >
@@ -109,7 +109,6 @@ export default function HirePage() {
         </div>
       </section>
 
-      {/* Why hire me */}
       <section className="px-5 md:px-6 pb-16 md:pb-24">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">Why hire a freelance web developer?</h2>
@@ -156,7 +155,6 @@ export default function HirePage() {
         </div>
       </section>
 
-      {/* FAQ */}
       <section className="px-5 md:px-6 pb-16 md:pb-24">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">Frequently Asked Questions</h2>
@@ -186,7 +184,6 @@ export default function HirePage() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="px-5 md:px-6 pb-24 md:pb-32">
         <div className="max-w-3xl mx-auto text-center glass px-6 md:px-10 py-10 md:py-14 rounded-3xl">
           <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">Ready to get started?</h2>
@@ -195,7 +192,7 @@ export default function HirePage() {
             what you need.
           </p>
           <a
-            href="https://calendly.com/hayd3nford2008"
+            href={`https://calendly.com/${s.calendly}`}
             target="_blank"
             className="inline-flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 md:px-8 py-3.5 md:py-4 rounded-full font-semibold text-sm transition-all duration-300"
           >

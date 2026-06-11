@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from "react";
 import { gsap } from "gsap";
 import { Menu, X } from "lucide-react";
+import { siteConfig } from "@/lib/config";
 
 const links = [
   { label: "Work", href: "#work" },
@@ -32,6 +33,8 @@ export default function Navbar() {
     }
   }, []);
 
+  const brandHtml = siteConfig.nameShort.replace(".", "<span class=\"text-brand\">.</span>");
+
   return (
     <nav
       ref={navRef}
@@ -45,9 +48,8 @@ export default function Navbar() {
         <a
           href="/"
           className="text-lg font-bold text-white tracking-tight hover:opacity-80 transition-opacity"
-        >
-          Hayden<span className="text-brand">.</span>Ford
-        </a>
+          dangerouslySetInnerHTML={{ __html: brandHtml }}
+        />
 
         <div className="hidden md:flex items-center gap-8">
           {links.map((l) => (

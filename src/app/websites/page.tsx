@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
+import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
-  title: "Websites for Australian Small Businesses | Hayden Ford",
-  description:
-    "Get a custom website for your small business in Australia. Fast, modern, and built to grow your business online. Starting from $800. Based in Gladstone QLD.",
+  title: `Websites for Australian Small Businesses | ${siteConfig.name}`,
+  description: `Get a custom website for your small business in Australia. Fast, modern, and built to grow your business online. Starting from $800. Based in ${siteConfig.location}.`,
   openGraph: {
-    title: "Websites for Australian Small Businesses — Hayden Ford",
-    description:
-      "Custom websites built for Australian small businesses. Starting from $800. Fast delivery with modern technology.",
+    title: `Websites for Australian Small Businesses — ${siteConfig.name}`,
+    description: "Custom websites built for Australian small businesses. Starting from $800. Fast delivery with modern technology.",
   },
 };
 
@@ -62,14 +61,15 @@ const services = [
 ];
 
 export default function WebsitesPage() {
+  const s = siteConfig;
+
   return (
     <>
-      {/* Hero */}
       <section className="relative min-h-[60vh] flex items-center justify-center px-5 md:px-6 pt-32 pb-16">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-brand/5 rounded-full blur-[150px] pointer-events-none" />
         <div className="relative z-10 max-w-3xl mx-auto text-center">
           <span className="text-[10px] md:text-xs text-zinc-600 uppercase tracking-[0.3em] font-medium mb-6 block">
-            Custom Websites — Gladstone, QLD
+            Custom Websites — {s.location}
           </span>
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight mb-6">
             Websites for{" "}
@@ -83,7 +83,7 @@ export default function WebsitesPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
             <a
-              href="https://calendly.com/hayd3nford2008"
+              href={`https://calendly.com/${s.calendly}`}
               target="_blank"
               className="inline-flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 md:px-8 py-3.5 md:py-4 rounded-full font-semibold text-sm transition-all duration-300"
             >
@@ -99,7 +99,6 @@ export default function WebsitesPage() {
         </div>
       </section>
 
-      {/* Why custom */}
       <section className="px-5 md:px-6 pb-16 md:pb-24">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">Why a custom website?</h2>
@@ -138,7 +137,6 @@ export default function WebsitesPage() {
         </div>
       </section>
 
-      {/* Packages */}
       <section className="px-5 md:px-6 pb-16 md:pb-24">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">Plans & pricing</h2>
@@ -173,7 +171,7 @@ export default function WebsitesPage() {
                   ))}
                 </ul>
                 <a
-                  href={`https://calendly.com/hayd3nford2008`}
+                  href={`https://calendly.com/${s.calendly}`}
                   target="_blank"
                   className={`block text-center rounded-full font-semibold text-sm py-3 px-5 transition-all duration-300 ${
                     svc.popular
@@ -189,7 +187,6 @@ export default function WebsitesPage() {
         </div>
       </section>
 
-      {/* Process */}
       <section className="px-5 md:px-6 pb-24 md:pb-32">
         <div className="max-w-3xl mx-auto text-center glass px-6 md:px-10 py-10 md:py-14 rounded-3xl">
           <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">How it works</h2>

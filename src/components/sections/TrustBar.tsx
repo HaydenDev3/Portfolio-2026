@@ -4,13 +4,14 @@ import { useRef, useEffect } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { CheckCircle, MapPin, DollarSign, Laptop } from "lucide-react";
+import { siteConfig } from "@/lib/config";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const stats = [
   { icon: CheckCircle, label: "1+ client", sub: "and growing" },
   { icon: Laptop, label: "Built with Next.js", sub: "Modern & fast" },
-  { icon: MapPin, label: "Based in Australia", sub: "Gladstone, QLD" },
+  { icon: MapPin, label: "Based in Australia", sub: siteConfig.location },
   { icon: DollarSign, label: "From $800", sub: "Custom websites" },
 ];
 

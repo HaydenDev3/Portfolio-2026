@@ -6,52 +6,42 @@ import SmoothScroll from "@/components/providers/SmoothScroll";
 import CursorFollower from "@/components/effects/CursorFollower";
 import ParticleField from "@/components/effects/ParticleField";
 import GradientOrb from "@/components/effects/GradientOrb";
+import { siteConfig } from "@/lib/config";
+
+const baseUrl = siteConfig.url;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://haydenf.fyi"),
+  metadataBase: new URL(baseUrl),
   title: {
-    default: "Hayden Ford — Web Developer for Hire | Australian Small Business Websites",
-    template: "%s | Hayden Ford",
+    default: siteConfig.title,
+    template: `%s | ${siteConfig.name}`,
   },
-  description:
-    "Hire Hayden Ford, a freelance web developer in Australia. Fast, modern websites for small businesses. Next.js specialist. Based in Gladstone QLD. Starting from $800.",
+  description: siteConfig.description,
   openGraph: {
-    title: "Hayden Ford — Freelance Web Developer Australia",
-    description:
-      "Hire a freelance web developer for your small business. Modern, fast websites built with Next.js. Starting from $800.",
-    url: "https://haydenf.fyi",
-    siteName: "Hayden Ford",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    url: baseUrl,
+    siteName: siteConfig.name,
     locale: "en_AU",
     type: "website",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    images: [{ url: siteConfig.ogImage, width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hayden Ford — Freelance Web Developer Australia",
-    description:
-      "Hire a freelance web developer for your small business. Modern, fast websites. Starting from $800.",
-    images: ["/og-image.png"],
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: [siteConfig.ogImage],
   },
   robots: {
     index: true,
     follow: true,
   },
-  keywords: [
-    "Hayden Ford",
-    "web developer for hire",
-    "hire a web developer Australia",
-    "freelance web developer",
-    "small business websites Australia",
-    "Gladstone web developer",
-    "Australian web developer",
-    "Next.js developer Australia",
-    "custom websites for small business",
-  ],
+  keywords: siteConfig.keywords,
   verification: {
-    google: "YOUR_GOOGLE_SEARCH_CONSOLE",
+    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
   },
   alternates: {
-    canonical: "https://haydenf.fyi",
+    canonical: baseUrl,
   },
 };
 
@@ -64,7 +54,7 @@ const faqSchema = {
       name: "How much does a website cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Prices start from $800 for a simple 1-3 page site and range up to $5,500 for a full multi-page custom build. Every quote is tailored to your specific needs during a free discovery call.",
+        text: `Prices start from $800 for a simple 1-3 page site and range up to $5,500 for a full multi-page custom build. Every quote is tailored to your specific needs during a free discovery call.`,
       },
     },
     {
@@ -96,7 +86,7 @@ const faqSchema = {
       name: "What areas do you serve?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "I'm based in Gladstone, Central Queensland, but I work with clients all across Australia. Everything is done remotely via video calls, email, and a shared project board.",
+        text: `I'm based in ${siteConfig.location}, but I work with clients all across Australia. Everything is done remotely via video calls, email, and a shared project board.`,
       },
     },
   ],
@@ -105,33 +95,24 @@ const faqSchema = {
 const personSchema = {
   "@context": "https://schema.org",
   "@type": "Person",
-  name: "Hayden Ford",
-  url: "https://haydenf.fyi",
-  jobTitle: "Web Developer",
+  name: siteConfig.name,
+  url: baseUrl,
+  jobTitle: siteConfig.tagline,
   knowsAbout: ["Next.js", "React", "TypeScript", "Web Development", "SEO", "Tailwind CSS"],
   sameAs: [
-    "https://github.com/HaydenDev3",
-    "https://www.instagram.com/itsda.hayden/",
-  ],
-  image: "https://haydenf.fyi/portrait.png",
+    siteConfig.social.github,
+    siteConfig.social.instagram,
+  ].filter(Boolean),
+  image: `${baseUrl}/portrait.png`,
 };
 
 const serviceSchema = {
   "@context": "https://schema.org",
   "@type": "ProfessionalService",
-  name: "Hayden Ford Web Development",
-  description:
-    "Freelance web developer for Australian small businesses. Custom websites built with Next.js. Based in Gladstone QLD.",
+  name: `${siteConfig.name} Web Development`,
+  description: siteConfig.description,
   areaServed: "AU",
-  priceRange: "$800 - $5,500",
-  telephone: "+61475506026",
-  email: "hayd3nford2008@gmail.com",
-  address: {
-    "@type": "PostalAddress",
-    addressLocality: "Gladstone",
-    addressRegion: "QLD",
-    addressCountry: "AU",
-  },
+  priceRange: siteConfig.priceRange,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

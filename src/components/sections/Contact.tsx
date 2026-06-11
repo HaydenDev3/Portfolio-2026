@@ -5,10 +5,11 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Mail, Send, Calendar, CheckCircle2, Github } from "lucide-react";
 import Pill from "@/components/pill";
+import { siteConfig } from "@/lib/config";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const WEB3FORMS_KEY = "1bab892b-2248-42b4-bd05-410fb3155eda";
+const WEB3FORMS_KEY = siteConfig.web3formsKey;
 
 export default function Contact() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -67,7 +68,7 @@ export default function Contact() {
         setError(data.message || "Something went wrong. Please email me directly.");
       }
     } catch {
-      setError("Failed to send. Please email me at hayd3nford2008@gmail.com");
+      setError(`Failed to send. Please email me at ${siteConfig.email}`);
     }
   }
 
@@ -93,7 +94,7 @@ export default function Contact() {
         {/* Buttons */}
         <div className="reveal flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4 mb-12 md:mb-16">
           <a
-            href="mailto:hayd3nford2008@gmail.com"
+            href={`mailto:${siteConfig.email}`}
             className="inline-flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 md:px-8 py-3.5 md:py-4 rounded-full font-semibold text-sm transition-all duration-300 group w-full sm:w-auto"
           >
             <Mail size={16} />
@@ -104,7 +105,7 @@ export default function Contact() {
             />
           </a>
           <a
-            href="https://calendly.com/hayd3nford2008"
+            href={`https://calendly.com/${siteConfig.calendly}`}
             target="_blank"
             className="inline-flex items-center justify-center gap-2 text-zinc-400 hover:text-white px-6 md:px-8 py-3.5 md:py-4 rounded-full font-semibold text-sm border border-white/[0.06] hover:border-white/[0.15] transition-all duration-300 w-full sm:w-auto"
           >
@@ -125,7 +126,7 @@ export default function Contact() {
           </span>
           <div className="w-px h-4 bg-zinc-800" />
           <a
-            href="https://www.instagram.com/itsda.hayden/"
+            href={siteConfig.social.instagram}
             target="_blank"
             className="w-9 h-9 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.06] transition-all duration-300 group"
             aria-label="Instagram"
@@ -137,7 +138,7 @@ export default function Contact() {
             </svg>
           </a>
           <a
-            href="https://discord.com/users/622903645268344835"
+            href={siteConfig.social.discord}
             target="_blank"
             className="w-9 h-9 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-[#5865F2] hover:border-[#5865F2]/30 hover:bg-[#5865F2]/[0.06] transition-all duration-300 group"
             aria-label="Discord"
@@ -147,7 +148,7 @@ export default function Contact() {
             </svg>
           </a>
           <a
-            href="https://github.com/HaydenDev3"
+            href={siteConfig.social.github}
             target="_blank"
             className="w-9 h-9 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.06] transition-all duration-300 group"
             aria-label="GitHub"
