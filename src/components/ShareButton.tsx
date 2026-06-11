@@ -8,6 +8,17 @@ import { generateStoryBlob } from "@/lib/storyImage";
 
 const platforms = [
   {
+    label: "Instagram",
+    action: true,
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+      </svg>
+    ),
+  },
+  {
     label: "Facebook",
     getHref: (u: string, t: string) =>
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}`,
@@ -190,18 +201,29 @@ export default function ShareButton() {
 
             {/* Platform buttons */}
             <div className="flex justify-center gap-3 mb-5 flex-wrap">
-              {platforms.map((p) => (
-                <a
-                  key={p.label}
-                  href={p.getHref(u, t)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.06] transition-all duration-300"
-                  aria-label={p.label}
-                >
-                  {p.icon}
-                </a>
-              ))}
+              {platforms.map((p) =>
+                p.action ? (
+                  <button
+                    key={p.label}
+                    onClick={handleShare}
+                    className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.06] transition-all duration-300 cursor-pointer"
+                    aria-label={p.label}
+                  >
+                    {p.icon}
+                  </button>
+                ) : (
+                  <a
+                    key={p.label}
+                    href={p.getHref!(u, t)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.06] transition-all duration-300"
+                    aria-label={p.label}
+                  >
+                    {p.icon}
+                  </a>
+                )
+              )}
             </div>
 
             {/* Actions */}
