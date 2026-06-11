@@ -1,85 +1,72 @@
 "use client";
 
-import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Github, Mail, MessageSquare } from "lucide-react";
-import TrueFocus from "./bits/TrueFocus"; 
+import React from "react";
+import { ArrowRight } from "lucide-react";
 
 export default function Hero() {
   return (
-    <section className="relative flex flex-col items-center justify-center h-screen w-full px-4 overflow-hidden bg-black">
-      
-      {/* 1. DISCORD-STYLE STATUS BADGE */}
-      <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-1000">
-        <div className="flex items-center gap-3 px-4 py-2 bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-full">
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-[#5865F2] flex items-center justify-center text-[10px] font-bold text-white uppercase">
-              HRF
-            </div>
-            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-black rounded-full" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Last Seen</span>
-            <span className="text-xs font-bold text-zinc-200 italic">UNBREAKABLENIGHT_</span>
-          </div>
-          <MessageSquare size={14} className="ml-2 text-zinc-600" />
-        </div>
-      </div>
+    <section className="relative flex flex-col items-center justify-center h-screen w-full px-6 overflow-hidden bg-black">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 via-transparent to-black pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* 2. MAIN TYPOGRAPHY */}
-      <div className="text-center z-10">
-        <h1 className="text-6xl md:text-9xl font-black text-white italic tracking-tighter uppercase leading-[0.8] mb-4">
-          HAYDEN RILEY<br />
-          <span className="text-transparent stroke-white" style={{ WebkitTextStroke: '2px white' }}>FORD</span>
+      <div className="relative z-10 text-center max-w-4xl mx-auto">
+        {/* Badge */}
+        <div className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 bg-zinc-900/60 border border-zinc-800 rounded-full text-xs text-zinc-400">
+          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          Available for new projects
+        </div>
+
+        {/* Heading */}
+        <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white leading-[0.85] tracking-tight mb-6">
+          I build websites that
+          <br />
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600">
+            grow your business.
+          </span>
         </h1>
-        
-        <div className="mt-8 flex justify-center">
-          <TrueFocus 
-            sentence="Design. Code. Deploy."
-            manualMode={false}
-            blurAmount={3}
-            borderColor="#5865F2"
-            glowColor="rgba(88, 101, 242, 0.3)"
-          />
+
+        {/* Subtext */}
+        <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed mb-10">
+          From one-page sites to full business platforms — I craft fast, modern
+          websites that look great and actually bring in clients. No jargon. No fuss.
+          Just results.
+        </p>
+
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a
+            href="#work"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-full font-semibold text-sm transition-all inline-flex items-center gap-2 group"
+          >
+            See My Work
+            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+          </a>
+          <a
+            href="#contact"
+            className="text-zinc-300 hover:text-white px-8 py-3.5 rounded-full font-semibold text-sm border border-zinc-800 hover:border-zinc-600 transition-all"
+          >
+            Book a Free Call
+          </a>
         </div>
       </div>
 
-      {/* 3. SUBTEXT */}
-      <p className="mt-8 max-w-[500px] text-center text-zinc-500 md:text-lg font-medium leading-tight">
-        Full-Stack Engineer crafting ready-to-go high-performance web applications with 
-        <span className="text-white"> Next.js & Shadcn/ui.</span>
-      </p>
-
-      {/* 4. ACTIONS */}
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-        <Button size="lg" className="bg-white text-black hover:bg-zinc-200 rounded-full px-8 font-black uppercase italic tracking-tighter group">
-          <Github className="mr-2 h-5 w-5" />
-          GitHub
-        </Button>
-        
-        <button className="text-zinc-400 hover:text-white flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors group">
-          Browse Projects
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </button>
+      {/* Scroll indicator */}
+      <div className="absolute bottom-10 flex flex-col items-center gap-2 text-zinc-600 animate-pulse">
+        <span className="text-[10px] font-semibold uppercase tracking-widest">Scroll</span>
+        <div className="w-5 h-8 border-2 border-zinc-700 rounded-full flex justify-center">
+          <div className="w-1 h-2 bg-zinc-500 rounded-full mt-2 animate-bounce" />
+        </div>
       </div>
 
-      {/* 5. SIDE-SCROLL INDICATOR (Desktop Only) */}
-      <div className="hidden lg:flex absolute right-12 bottom-1/2 translate-y-1/2 flex-col items-center gap-4 opacity-20">
-        <p className="text-[10px] font-black uppercase tracking-[0.5em] rotate-90 whitespace-nowrap text-white">
-          Scroll_Right
-        </p>
-        <div className="h-24 w-[1px] bg-gradient-to-b from-white to-transparent" />
+      {/* Tech stack hint */}
+      <div className="absolute bottom-32 right-8 hidden lg:flex flex-col gap-2 text-right">
+        {["Next.js", "React", "TypeScript", "Tailwind"].map((tech) => (
+          <span key={tech} className="text-[10px] font-mono text-zinc-700 uppercase tracking-wider">
+            {tech}
+          </span>
+        ))}
       </div>
-
-      {/* 6. BOTTOM TECH STACK REVEAL */}
-      <div className="absolute bottom-10 flex gap-6 text-[10px] font-black text-zinc-800 uppercase tracking-[0.3em]">
-        <span>React.js</span>
-        <span>Typescript</span>
-        <span>Tailwind</span>
-        <span>Shadcn</span>
-      </div>
-
     </section>
   );
 }
