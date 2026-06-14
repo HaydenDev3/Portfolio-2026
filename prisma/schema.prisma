@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
+enum ClientStatus {
+  LEAD
+  ACTIVE
+  COMPLETED
+}
+
+enum ProjectTier {
+  ESSENTIAL
+  GROWTH
+  PREMIUM
+}
+
+enum ProjectStatus {
+  DISCOVERY
+  DESIGN
+  BUILD
+  LAUNCH
+  COMPLETE
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  REFUNDED
+}
+
+enum SubscriptionPlan {
+  MAINTENANCE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAUSED
+}
+
+enum UserRole {
+  ADMIN
+  CLIENT
+}
+
+enum TestimonialSource {
+  GOOGLE
+  DIRECT
+  OTHER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum BadgeType {
+  ADMIN
+  VERIFIED
+  PRO
+  EARLY_SUPPORTER
+}
+
+model User {
+  id             String      @id @default(cuid())
+  name           String?
+  email          String      @unique
+  username       String?     @unique
+  displayName    String?
+  image          String?
+  banner         String?
+  bio            String?
+  socialLinks    Json?         // [{ platform: "x" | "linkedin" | "website" | ..., url: string }]
+  phone          String?
+  company        String?
+  notes          String?
+  clientStatus   ClientStatus  @default(ACTIVE)
+  hashedPassword String
+  role           UserRole    @default(CLIENT)
+  banned         Boolean     @default(false)
+  client         Client?
+  badges         UserBadge[]
+  forumTopics    ForumTopic[]
+  forumPosts     ForumPost[]
+  forumVotes     ForumVote[]
+  ticketMessages TicketMessage[]
+  projectComments ProjectComment[]
+  // New reverse relations for clientUserId (portal users as clients)
+  clientProjects      Project[]       @relation("ClientUserToProjects")
+  clientTickets       SupportTicket[] @relation("ClientUserToTickets")
+  clientInvoices      Invoice[]       @relation("ClientUserToInvoices")
+  // Reverse for tickets assigned to staff (admins)
+  assignedTickets     SupportTicket[] @relation("AssignedStaffToTickets")
+  clientSubscriptions Subscription[]  @relation("ClientUserToSubscriptions")
+  clientTestimonials  Testimonial[]   @relation("ClientUserToTestimonials")
+  linktrees      Linktree[]  // multiple named linktrees, clients limited to 2, admins unlimited
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Linktree {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  links     Json     // [{ platform: string, url: string }]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+}
+
+model UserBadge {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id])
+  badge    BadgeType
+  earnedAt DateTime  @default(now())
+
+  @@unique([userId, badge])
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  name        String
+  email       String
+  projectType String?
+  message     String?
+  status      LeadStatus @default(NEW)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Client {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  phone         String?
+  company       String?
+  notes         String?
+  userId        String?        @unique
+  user          User?          @relation(fields: [userId], references: [id])
+  status        ClientStatus   @default(LEAD)
+  projects      Project[]
+  invoices      Invoice[]
+  subscriptions Subscription[]
+  testimonials  Testimonial[]
+  tickets       SupportTicket[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Testimonial {
+  id           String            @id @default(cuid())
+  clientId     String?
+  client       Client?           @relation(fields: [clientId], references: [id])
+  clientUserId String?           // new: link to User (when the client is a portal user)
+  clientUser   User?             @relation("ClientUserToTestimonials", fields: [clientUserId], references: [id])
+  name         String
+  company      String?
+  role         String?
+  content      String
+  rating       Int               @default(5)
+  source       TestimonialSource @default(DIRECT)
+  isApproved   Boolean           @default(false)
+  isFeatured   Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model SupportTicket {
+  id           String         @id @default(cuid())
+  clientId     String
+  client       Client         @relation(fields: [clientId], references: [id])
+  clientUserId String?        // new: link to User (when the client is a portal user)
+  clientUser   User?          @relation("ClientUserToTickets", fields: [clientUserId], references: [id])
+  subject      String
+  message      String
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  adminNotes   String?
+  assignedStaffId String?     // staff (ADMIN user) assigned to handle this ticket
+  assignedStaff   User?       @relation("AssignedStaffToTickets", fields: [assignedStaffId], references: [id])
+  messages     TicketMessage[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  clientId     String
+  client       Client        @relation(fields: [clientId], references: [id])
+  clientUserId String?       // new: link to User (when the client is a portal user)
+  clientUser   User?         @relation("ClientUserToProjects", fields: [clientUserId], references: [id])
+  name         String
+  description  String?
+  tier         ProjectTier
+  price        Int
+  status       ProjectStatus @default(DISCOVERY)
+  liveUrl      String?
+  invoices     Invoice[]
+  comments     ProjectComment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Invoice {
+  id                    String         @id @default(cuid())
+  clientId              String
+  client                Client         @relation(fields: [clientId], references: [id])
+  clientUserId          String?        // new: link to User (when the client is a portal user)
+  clientUser            User?          @relation("ClientUserToInvoices", fields: [clientUserId], references: [id])
+  projectId             String?
+  project               Project?       @relation(fields: [projectId], references: [id])
+  subscriptionId        String?
+  subscription          Subscription?  @relation(fields: [subscriptionId], references: [id])
+  amount                Int
+  status                InvoiceStatus  @default(PENDING)
+  stripePaymentIntentId String?        @unique
+  dueDate               DateTime?
+  paidAt                DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  clientId             String
+  client               Client             @relation(fields: [clientId], references: [id])
+  clientUserId         String?            // new: link to User (when the client is a portal user)
+  clientUser           User?              @relation("ClientUserToSubscriptions", fields: [clientUserId], references: [id])
+  stripeSubscriptionId String             @unique
+  plan                 SubscriptionPlan
+  amount               Int
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodEnd     DateTime?
+  invoices             Invoice[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model ForumCategory {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  description String?
+  icon        String?
+  sortOrder   Int          @default(0)
+  accessLevel String       @default("PUBLIC") // PUBLIC | CLIENTS
+  topics      ForumTopic[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ForumTopic {
+  id         String       @id @default(cuid())
+  title      String
+  slug       String       @unique
+  content    String
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  categoryId String
+  category   ForumCategory @relation(fields: [categoryId], references: [id])
+  isPinned   Boolean      @default(false)
+  isLocked   Boolean      @default(false)
+  viewCount  Int          @default(0)
+  posts      ForumPost[]
+  votes      ForumVote[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model ForumPost {
+  id        String      @id @default(cuid())
+  content   String
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  topicId   String
+  topic     ForumTopic  @relation(fields: [topicId], references: [id])
+  votes     ForumVote[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model ForumVote {
+  id        String     @id @default(cuid())
+  value     Int
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  topicId   String?
+  topic     ForumTopic? @relation(fields: [topicId], references: [id])
+  postId    String?
+  post      ForumPost? @relation(fields: [postId], references: [id])
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, topicId])
+  @@unique([userId, postId])
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model ProjectComment {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  fileUrl   String?
+  createdAt DateTime @default(now())
+}
+
+model LiveViewer {
+  id        String   @id @default(cuid())
+  ip        String   @unique
+  lat       Float
+  lng       Float
+  city      String?
+  country   String?
+  lastSeen  DateTime @default(now())
+}

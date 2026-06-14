@@ -1,11 +1,5 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Space Grotesk";
-  src: url("/fonts/SpaceGrotesk-Variable.woff2") format("woff2");
-  font-display: swap;
-}
-
 @theme inline {
   --font-display: "Space Grotesk", sans-serif;
   --color-brand: #3b82f6;
@@ -19,10 +13,105 @@
 @layer base {
   html {
     scroll-behavior: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior: none;
   }
+  html::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* CSS Variables for theming (easy to extend) */
+  :root {
+    --bg: #050505;
+    --surface: rgba(255, 255, 255, 0.03);
+    --surface-solid: #0a0a0a;
+    --border: rgba(255, 255, 255, 0.06);
+    --text: #f1f5f9;
+    --text-muted: #64748b;
+    --accent: #3b82f6;
+  }
+
   body {
-    @apply bg-[#050505] text-zinc-100 antialiased overflow-x-hidden;
+    background: var(--bg);
+    color: var(--text);
     font-family: "Space Grotesk", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+    @apply antialiased overflow-x-hidden;
+  }
+
+  .glass {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+  }
+
+  .glass-hover:hover {
+    background: rgba(59, 130, 246, 0.06);
+    border-color: rgba(59, 130, 246, 0.2);
+  }
+
+  /* Light theme support has been removed.
+     The site is now dark-first with OLED as the high-contrast pure-black option.
+     All previous html.light rules have been deleted. */
+
+  /* --- OLED Theme (pure black for OLED screens) --- */
+  html.oled {
+    --bg: #000000;
+    --surface: rgba(255, 255, 255, 0.02);
+    --surface-solid: #000000;
+    --border: rgba(255, 255, 255, 0.05);
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #60a5fa;
+  }
+
+  html.oled body {
+    background: #000000;
+  }
+
+  html.oled .glass {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(20px);
+  }
+
+  html.oled .glass-hover:hover {
+    background: rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.15);
+  }
+
+  html.oled .text-slate-400,
+  html.oled .text-zinc-500,
+  html.oled .text-zinc-600 {
+    color: #94a3b8;
+  }
+
+  html.oled .border-white\/10,
+  html.oled .border-white\/5 {
+    border-color: rgba(255, 255, 255, 0.04);
+  }
+
+  html.oled .bg-white\/\[0\.015\],
+  html.oled .bg-white\/\[0\.018\] {
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  html.oled .bg-slate-800\/50,
+  html.oled .bg-slate-900 {
+    background: #111111;
+  }
+
+  /* Very subtle orbs on OLED for battery/performance */
+  html.oled .orb-a,
+  html.oled .orb-b,
+  html.oled .orb-c {
+    opacity: 0.35;
+  }
+
+  /* Base styles */
+  * {
     -webkit-tap-highlight-color: transparent;
   }
   ::selection {
@@ -222,6 +311,79 @@
   0%   { opacity: 0; transform: scale(0.8); }
   30%  { opacity: 1; transform: scale(1); }
   100% { opacity: 0.3; transform: scale(1); }
+}
+
+/* ── Hide scrollbar utility ── */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Animated background orbs ── */
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(40px, -30px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(30px, 40px) scale(1.02); }
+}
+.orb-a { animation: orb-float 20s ease-in-out infinite; }
+.orb-b { animation: orb-float 25s ease-in-out infinite reverse; }
+.orb-c { animation: orb-float 18s ease-in-out infinite; animation-delay: -5s; }
+
+/* ── Staggered card entrance ── */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-enter {
+  animation: card-in 0.4s ease-out forwards;
+  opacity: 0;
+}
+
+/* ── Mobile bottom nav padding ── */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: 4rem;
+  }
+}
+
+/* Smart mobile responsiveness helpers */
+@media (max-width: 767px) {
+  /* Larger tap targets */
+  button, a[role="button"], .glass a, input[type="button"], input[type="submit"] {
+    min-height: 42px;
+  }
+
+  /* Tables: slightly tighter but still readable + better scrolling */
+  table {
+    font-size: 12.5px;
+  }
+  .glass table th,
+  .glass table td {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+
+  /* Forum & cards breathe a little better on small screens when dense */
+  .space-y-1 > * + * {
+    margin-top: 6px;
+  }
+}
+
+/* Ensure focus rings are visible on mobile */
+:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+/* Prevent tiny text in interactive chrome */
+@media (hover: none) {
+  .text-xs, .text-\[10px\], .text-\[9px\], .text-\[8px\] {
+    /* keep as-is but don't shrink interactive labels further */
+  }
 }
 
 /* ── Glitch scan lines ── */

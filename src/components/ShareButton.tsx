@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { gsap } from "gsap";
 import { Share2, X, Link, Download, Mail, Check, Globe } from "lucide-react";
 import { siteConfig } from "@/lib/config";
@@ -77,6 +78,7 @@ const platforms = [
 ];
 
 export default function ShareButton() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -84,24 +86,26 @@ export default function ShareButton() {
   const modalRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const hidden = pathname.startsWith("/dashboard") || pathname.startsWith("/client");
 
   useEffect(() => {
+    if (hidden) return;
     generateStoryBlob().then((blob) => {
       setPreviewUrl(URL.createObjectURL(blob));
     });
-  }, []);
+  }, [hidden]);
 
   useEffect(() => {
-    if (btnRef.current) {
-      gsap.fromTo(
-        btnRef.current,
-        { scale: 0, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(2)", delay: 1.5 }
-      );
-    }
-  }, []);
+    if (hidden || !btnRef.current) return;
+    gsap.fromTo(
+      btnRef.current,
+      { scale: 0, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(2)", delay: 1.5 }
+    );
+  }, [hidden]);
 
   useEffect(() => {
+    if (hidden) return;
     const ctx = gsap.context(() => {
       if (open && cardRef.current && overlayRef.current) {
         gsap.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3 });
@@ -149,16 +153,30 @@ export default function ShareButton() {
     a.click();
   }, []);
 
+  const handleInstagramClick = useCallback(async () => {
+    try {
+      const blob = await generateStoryBlob();
+      const file = new File([blob], "story.png", { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], url: u, title: t });
+        return;
+      }
+    } catch {}
+    window.open(s.social.instagram, "_blank", "noopener");
+  }, [u, t]);
+
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) setOpen(false);
   };
+
+  if (hidden) return null;
 
   return (
     <>
       <button
         ref={btnRef}
         onClick={handleShare}
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 w-12 h-12 md:w-14 md:h-14 rounded-full glass flex items-center justify-center text-zinc-400 hover:text-white hover:border-white/[0.15] transition-all duration-300 share-pulse cursor-pointer"
+        className="fixed bottom-20 right-6 md:bottom-8 md:right-8 z-[51] w-12 h-12 md:w-14 md:h-14 rounded-full glass flex items-center justify-center text-zinc-400 hover:text-white hover:border-white/[0.15] transition-all duration-300 share-pulse cursor-pointer"
         aria-label="Share"
       >
         <Share2 size={20} />
@@ -203,9 +221,9 @@ export default function ShareButton() {
             <div className="flex justify-center gap-3 mb-5 flex-wrap">
               {platforms.map((p) =>
                 p.action ? (
-                  <button
+                    <button
                     key={p.label}
-                    onClick={handleShare}
+                    onClick={handleInstagramClick}
                     className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.06] transition-all duration-300 cursor-pointer"
                     aria-label={p.label}
                   >

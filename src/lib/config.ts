@@ -18,12 +18,13 @@ export const siteConfig = {
     discord: `https://discord.com/users/${process.env.NEXT_PUBLIC_DISCORD_ID || ""}`,
   },
   location: process.env.NEXT_PUBLIC_LOCATION || "Your City, State",
-  priceRange: process.env.NEXT_PUBLIC_PRICE_RANGE || "$500 - $5,000",
+  priceRange: process.env.NEXT_PUBLIC_PRICE_RANGE || "$300 - $2,500",
   copyright: process.env.NEXT_PUBLIC_COPYRIGHT || "Your Name",
   shareText:
     process.env.NEXT_PUBLIC_SHARE_TEXT ||
     `Check out ${process.env.NEXT_PUBLIC_SITE_NAME || "this developer"} — ${process.env.NEXT_PUBLIC_TAGLINE || "Web Developer"} 👋`,
   ogImage: "/og-image.png",
+  headshot: "/portrait.png",  // Professional headshot featured in Story section; used for nav branding and user profile previews
   keywords: [
     process.env.NEXT_PUBLIC_SITE_NAME || "developer",
     "web developer",

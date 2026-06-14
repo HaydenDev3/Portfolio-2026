@@ -12,7 +12,7 @@ const stats = [
   { icon: CheckCircle, label: "1+ client", sub: "and growing" },
   { icon: Laptop, label: "Built with Next.js", sub: "Modern & fast" },
   { icon: MapPin, label: "Based in Australia", sub: siteConfig.location },
-  { icon: DollarSign, label: "From $800", sub: "Custom websites" },
+  { icon: DollarSign, label: "From $300", sub: "Custom websites" },
 ];
 
 export default function TrustBar() {

@@ -3,10 +3,10 @@ import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Hire a Web Developer in Australia | Hayden Ford — Freelance Web Developer",
-  description: `Hire a freelance web developer in Australia. Get a fast, modern website for your small business from ${siteConfig.location}'s ${siteConfig.name}. Starting from $800. Free discovery call.`,
+  description: `Hire a freelance web developer in Australia. Get a fast, modern website for your small business from ${siteConfig.location}'s ${siteConfig.name}. Starting from $300. Free discovery call.`,
   openGraph: {
     title: "Hire a Web Developer in Australia — Hayden Ford",
-    description: `Get a fast, modern website for your small business. Freelance web developer based in ${siteConfig.location}. Starting from $800.`,
+    description: `Get a fast, modern website for your small business. Freelance web developer based in ${siteConfig.location}. Starting from $300.`,
   },
 };
 
@@ -19,7 +19,7 @@ const faqLd = {
       name: "How much does it cost to hire a freelance web developer in Australia?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: `Most freelance web developers in Australia charge between $800 and $5,500 for a small business website. My packages start at $800 for a simple site and go up to $5,500 for a full custom multi-page build. The exact price depends on the number of pages, features you need, and complexity of the design.`,
+        text: "My packages start at $300 for a simple site and go up to $2,500 for a full custom multi-page build. The exact price depends on the number of pages, features you need, and complexity of the design.",
       },
     },
     {
@@ -59,7 +59,7 @@ const faqLd = {
       name: "Do you offer payment plans?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. I split payments into two installments: 50% upfront to start the project and 50% on launch. For larger projects ($3,000+), I can do three-stage payments.",
+        text: "Yes. I split payments into two installments: 50% upfront to start the project and 50% on launch. For larger projects ($2,000+), I can do three-stage payments.",
       },
     },
   ],
@@ -89,7 +89,7 @@ export default function HirePage() {
           <p className="text-base md:text-lg text-zinc-500 max-w-2xl mx-auto leading-relaxed mb-8">
             I build fast, modern websites for Australian small businesses. No jargon. No agencies.
             Just a freelance web developer who delivers — starting from{" "}
-            <span className="text-zinc-300 font-medium">$800</span>.
+            <span className="text-zinc-300 font-medium">$300</span>.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
             <a
@@ -152,6 +152,68 @@ export default function HirePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="px-5 md:px-6 pb-16 md:pb-24">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl md:text-4xl font-bold text-white mb-3">Packages &amp; What's Included</h2>
+          <p className="text-zinc-500 text-sm md:text-base mb-10 max-w-2xl">
+            Fixed-price packages designed for Australian small businesses. All include modern Next.js builds, mobile-first responsive design, basic SEO, and launch support. Prices in AUD.
+          </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {[
+              {
+                tier: "Essential",
+                price: "$300",
+                desc: "Single-page site or landing page. Perfect for new businesses or simple online presence.",
+                features: ["Custom design + Next.js build", "Mobile responsive", "Contact form + basic SEO", "1 round of revisions", "Launch support"],
+              },
+              {
+                tier: "Growth",
+                price: "$600",
+                desc: "Multi-page business site with up to 6 pages. Ideal for most small businesses.",
+                features: ["Everything in Essential", "Up to 6 pages + blog setup option", "Image gallery / services pages", "2 revision rounds", "Basic analytics + speed optimisation"],
+              },
+              {
+                tier: "Premium",
+                price: "$1,200",
+                desc: "Full custom site or small web app. Best for established businesses wanting standout results.",
+                features: ["Everything in Growth", "Custom interactions + animations (GSAP)", "Advanced forms / CRM integration", "Unlimited pages within scope", "3 revision rounds + training"],
+              },
+              {
+                tier: "Maintenance",
+                price: "$25/mo",
+                desc: "Keep your site secure, fast and up to date. Includes minor content updates and monitoring.",
+                features: ["Monthly updates & security patches", "Uptime + performance monitoring", "Minor content or image changes", "Priority email support", "Cancel or pause anytime"],
+              },
+            ].map((pkg) => (
+              <div key={pkg.tier} className="glass px-5 md:px-6 py-6 md:py-7 rounded-2xl flex flex-col">
+                <div>
+                  <div className="flex items-baseline justify-between mb-1">
+                    <h3 className="text-lg font-semibold text-white">{pkg.tier}</h3>
+                    <span className="text-xl font-bold text-white">{pkg.price}</span>
+                  </div>
+                  <p className="text-xs md:text-sm text-zinc-500 mb-4 leading-relaxed">{pkg.desc}</p>
+                  <ul className="space-y-1.5 text-xs md:text-sm text-zinc-400 mb-4">
+                    {pkg.features.map((f, idx) => (
+                      <li key={idx} className="flex gap-2">
+                        <span className="text-emerald-400/80 mt-px">✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-auto pt-2">
+                  <a href={`https://calendly.com/${s.calendly}`} target="_blank" className="inline-block text-xs font-medium text-white/80 hover:text-white underline underline-offset-4">
+                    Book discovery call to get started →
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-zinc-500 mt-6 text-center">
+            All projects start with a free discovery call. Exact scope and timeline confirmed before deposit. Stripe checkout + subscription management available for qualifying projects via the client portal.
+          </p>
         </div>
       </section>
 

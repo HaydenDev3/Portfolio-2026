@@ -3,17 +3,17 @@ import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: `Websites for Australian Small Businesses | ${siteConfig.name}`,
-  description: `Get a custom website for your small business in Australia. Fast, modern, and built to grow your business online. Starting from $800. Based in ${siteConfig.location}.`,
+  description: `Get a custom website for your small business in Australia. Fast, modern, and built to grow your business online. Starting from $300. Based in ${siteConfig.location}.`,
   openGraph: {
     title: `Websites for Australian Small Businesses — ${siteConfig.name}`,
-    description: "Custom websites built for Australian small businesses. Starting from $800. Fast delivery with modern technology.",
+    description: "Custom websites built for Australian small businesses. Starting from $300. Fast delivery with modern technology.",
   },
 };
 
 const services = [
   {
     title: "Landing Page",
-    price: "$800",
+    price: "$300",
     desc: "A single-page site perfect for tradies, freelancers, and solo operators who need a strong online presence fast.",
     features: [
       "Single-page design",
@@ -27,7 +27,7 @@ const services = [
   },
   {
     title: "Small Business Site",
-    price: "$1,500",
+    price: "$600",
     desc: "A multi-page website for cafes, shops, and local services that need to showcase their full offering online.",
     features: [
       "Up to 5 pages",
@@ -44,7 +44,7 @@ const services = [
   },
   {
     title: "Custom Build",
-    price: "$3,000+",
+    price: "$1,200+",
     desc: "A fully custom site for businesses with unique needs — booking systems, e-commerce, member portals, and more.",
     features: [
       "Unlimited pages",
@@ -79,7 +79,7 @@ export default function WebsitesPage() {
           <p className="text-base md:text-lg text-zinc-500 max-w-2xl mx-auto leading-relaxed mb-8">
             Custom-built websites designed to help local businesses grow online. No templates.
             No page builders. Just hand-coded, fast-loading sites — starting from{" "}
-            <span className="text-zinc-300 font-medium">$800</span>.
+            <span className="text-zinc-300 font-medium">$300</span>.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
             <a

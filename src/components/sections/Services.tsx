@@ -1,16 +1,17 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Check, ArrowRight } from "lucide-react";
+import { Check, ArrowRight, X, Loader2 } from "lucide-react";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const tiers = [
   {
+    key: "essential",
     name: "Essential",
-    price: "From $800",
+    price: "$300",
     desc: "Perfect for a simple online presence — freelancers, side projects, or small local businesses.",
     features: [
       "1–3 pages",
@@ -23,8 +24,9 @@ const tiers = [
     popular: false,
   },
   {
+    key: "growth",
     name: "Growth",
-    price: "From $1,500",
+    price: "$600",
     desc: "Best for growing businesses that need a proper online presence that converts.",
     features: [
       "Up to 6 pages",
@@ -38,8 +40,9 @@ const tiers = [
     popular: true,
   },
   {
+    key: "premium",
     name: "Premium",
-    price: "From $3,000",
+    price: "$1,200",
     desc: "Full-service build for serious businesses ready to dominate their market online.",
     features: [
       "Multi-page custom site",
@@ -59,6 +62,14 @@ export default function Services() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<string>("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [addon, setAddon] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -94,6 +105,38 @@ export default function Services() {
 
     return () => ctx.revert();
   }, []);
+
+  async function handleCheckout(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tier: selectedTier,
+          name,
+          email,
+          addon,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong");
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch {
+      setError("Failed to connect to payment provider");
+      setLoading(false);
+    }
+  }
 
   return (
     <section ref={sectionRef} id="services" className="py-24 md:py-44 px-5 md:px-6">
@@ -144,20 +187,116 @@ export default function Services() {
                 ))}
               </ul>
 
-              <a
-                href="#contact"
-                className={`flex items-center justify-center gap-2 w-full py-3 md:py-3.5 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 ${
+              <button
+                onClick={() => {
+                  setSelectedTier(tier.key);
+                  setName("");
+                  setEmail("");
+                  setAddon(false);
+                  setError("");
+                  setModalOpen(true);
+                }}
+                className={`flex items-center justify-center gap-2 w-full py-3 md:py-3.5 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 cursor-pointer ${
                   tier.popular
                     ? "bg-brand hover:bg-brand-dark text-white"
                     : "glass glass-hover text-zinc-300 hover:text-white"
                 }`}
               >
                 Get Started <ArrowRight size={13} className="md:size-[14px]" />
-              </a>
+              </button>
             </div>
           ))}
         </div>
       </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setModalOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-md glass p-8 rounded-2xl border border-white/10">
+            <button
+              onClick={() => setModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <h3 className="text-xl font-bold gradient-text mb-1">
+              {tiers.find((t) => t.key === selectedTier)?.name} Plan
+            </h3>
+            <p className="text-sm text-slate-400 mb-6">
+              Enter your details to proceed to checkout.
+            </p>
+
+            <form onSubmit={handleCheckout} className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="Your name"
+                  className="w-full px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="your@email.com"
+                  className="w-full px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50"
+                />
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={addon}
+                  onChange={(e) => setAddon(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 bg-slate-800 accent-blue-500"
+                />
+                <div>
+                  <p className="text-sm text-white">+ Monthly Maintenance</p>
+                  <p className="text-xs text-slate-500">
+                    $50/mo — hosting, updates & support
+                  </p>
+                </div>
+              </label>
+
+              {error && (
+                <p className="text-sm text-red-400 bg-red-500/10 rounded-lg p-3 border border-red-500/20">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  `Proceed to Checkout — $${addon ? "325+" : selectedTier === "growth" ? "600" : selectedTier === "premium" ? "1,200" : "300"}`
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -62,6 +62,17 @@ export default function Contact() {
       const data = await res.json();
 
       if (data.success) {
+        const name = formData.get("name") as string;
+        const email = formData.get("email") as string;
+        const projectType = formData.get("project-type") as string;
+        const message = formData.get("message") as string;
+
+        fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, projectType, message }),
+        }).catch(() => {});
+
         setSubmitted(true);
         form.reset();
       } else {
