@@ -96,8 +96,6 @@ export default function AdminSettingsPage() {
     premium: !!process.env.STRIPE_PREMIUM_PRICE_ID,
     maintenance: !!process.env.STRIPE_MAINTENANCE_PRICE_ID,
   });
-    secret: "Check server",
-  });
 
   // Webhook / Email Tester
   const [testType, setTestType] = useState<"welcome" | "payment" | "admin" | "forum_reply" | "new_ticket" | "ticket_reply" | "raw" | "special">("payment");
