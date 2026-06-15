@@ -1,50 +1,40 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+/build
+/coverage
+# debug
 # dependencies
+.DS_Store
+.env
+.env.*
+!.env.example
+# env files (can opt-in for committing if needed)
+# misc
+/.next/
+next-env.d.ts
+# next.js
 /node_modules
-/.pnp
+npm-debug.log*
+/out/
+package-lock.json
+*.pem
 .pnp.*
+/.pnp
+.pnpm-debug.log*
+.pnpm-lock.yaml
+# production
+public/uploads/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+/src/generated/prisma
+# testing
+*.tsbuildinfo
+# typescript
+# vercel
+.vercel
 .yarn/*
+yarn-debug.log*
+yarn-error.log*
+yarn.lock
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
-# testing
-package-lock.json
-yarn.lock
-.pnpm-lock.yaml
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env
-.env.*
-!.env.example
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-/src/generated/prisma
