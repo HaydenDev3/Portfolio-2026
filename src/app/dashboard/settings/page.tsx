@@ -91,6 +91,11 @@ export default function AdminSettingsPage() {
   // Integrations status
   const [stripeStatus, setStripeStatus] = useState({
     publishable: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    essential: !!process.env.STRIPE_ESSENTIAL_PRICE_ID,
+    growth: !!process.env.STRIPE_GROWTH_PRICE_ID,
+    premium: !!process.env.STRIPE_PREMIUM_PRICE_ID,
+    maintenance: !!process.env.STRIPE_MAINTENANCE_PRICE_ID,
+  });
     secret: "Check server",
   });
 
@@ -627,8 +632,13 @@ export default function AdminSettingsPage() {
             <div className="text-xs space-y-1.5 text-slate-400 font-mono">
               <div className="flex justify-between"><span>Publishable</span> <span className={stripeStatus.publishable ? "text-emerald-400" : "text-red-400"}>{stripeStatus.publishable ? "✓ set" : "missing"}</span></div>
               <div className="flex justify-between"><span>Secret / Webhook</span> <span className="text-amber-400">server-only</span></div>
+              <div className="border-t border-white/5 my-1.5" />
+              <div className="flex justify-between"><span>Essential Price ID</span> <span className={!!process.env.STRIPE_ESSENTIAL_PRICE_ID ? "text-emerald-400" : "text-red-400"}>{!!process.env.STRIPE_ESSENTIAL_PRICE_ID ? "✓" : "missing"}</span></div>
+              <div className="flex justify-between"><span>Growth Price ID</span> <span className={!!process.env.STRIPE_GROWTH_PRICE_ID ? "text-emerald-400" : "text-red-400"}>{!!process.env.STRIPE_GROWTH_PRICE_ID ? "✓" : "missing"}</span></div>
+              <div className="flex justify-between"><span>Premium Price ID</span> <span className={!!process.env.STRIPE_PREMIUM_PRICE_ID ? "text-emerald-400" : "text-red-400"}>{!!process.env.STRIPE_PREMIUM_PRICE_ID ? "✓" : "missing"}</span></div>
+              <div className="flex justify-between"><span>Maintenance Price ID</span> <span className={!!process.env.STRIPE_MAINTENANCE_PRICE_ID ? "text-emerald-400" : "text-red-400"}>{!!process.env.STRIPE_MAINTENANCE_PRICE_ID ? "✓" : "missing"}</span></div>
             </div>
-            <a href="https://dashboard.stripe.com/test/apikeys" target="_blank" className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs mt-3 font-space">
+            <a href="https://dashboard.stripe.com/apikeys" target="_blank" className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs mt-3 font-space">
               Manage keys <ExternalLink size={12} />
             </a>
           </div>
