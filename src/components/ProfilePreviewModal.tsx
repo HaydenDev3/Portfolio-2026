@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
 import { getPlatformLabel, getSocialIcon } from "@/lib/utils";
 
 const BADGE_COLORS: Record<string, string> = {
@@ -42,7 +41,8 @@ export default function ProfilePreviewModal({
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    import("gsap").then(({ default: gsap }) => {
       gsap.fromTo(
         overlayRef.current,
         { opacity: 0 },
@@ -53,7 +53,7 @@ export default function ProfilePreviewModal({
         { opacity: 0, scale: 0.95, y: 10 },
         { opacity: 1, scale: 1, y: 0, duration: 0.25, ease: "power2.out" }
       );
-    }
+    });
   }, [open]);
 
   if (!open || !user) return null;
@@ -68,7 +68,7 @@ export default function ProfilePreviewModal({
     >
       <div
         ref={cardRef}
-        className="w-full max-w-md md:max-w-md glass rounded-2xl md:rounded-2xl border border-white/10 overflow-hidden md:my-0 my-auto max-h-[92vh] md:max-h-none overflow-y-auto"
+        className="w-full max-w-md md:max-w-md glass rounded-2xl md:rounded-2xl border border-white/10 overflow-hidden md:my-0 my-auto max-h-[92vh] md:max-h-none overflow-y-auto premium-scrollbar"
       >
         {user.banner ? (
           <div className="h-24 md:h-32 overflow-hidden">

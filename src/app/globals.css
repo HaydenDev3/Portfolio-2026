@@ -30,7 +30,15 @@
     --text: #f1f5f9;
     --text-muted: #64748b;
     --accent: #3b82f6;
+    --accent-dark: #1d4ed8;
+    --accent-light: #60a5fa;
   }
+
+  /* Dynamic accent from user Appearance settings (applied via JS on :root) */
+  [data-accent="purple"] { --accent: #8b5cf6; --accent-dark: #5b21b6; --accent-light: #a78bfa; }
+  [data-accent="emerald"] { --accent: #10b981; --accent-dark: #047857; --accent-light: #34d399; }
+  [data-accent="rose"] { --accent: #f43f5e; --accent-dark: #9f1239; --accent-light: #fb7185; }
+  [data-accent="amber"] { --accent: #f59e0b; --accent-dark: #b45309; --accent-light: #fbbf24; }
 
   body {
     background: var(--bg);
@@ -50,6 +58,18 @@
   .glass-hover:hover {
     background: rgba(59, 130, 246, 0.06);
     border-color: rgba(59, 130, 246, 0.2);
+  }
+
+  /* Dynamic accent theming applied to common interactive elements */
+  .accent-button,
+  button[type="submit"],
+  .primary-action {
+    background-color: var(--accent);
+    color: white;
+  }
+  .accent-button:hover,
+  button[type="submit"]:hover {
+    filter: brightness(1.08);
   }
 
   /* Light theme support has been removed.
@@ -155,12 +175,6 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-.glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .glass-hover {
@@ -313,6 +327,26 @@
   100% { opacity: 0.3; transform: scale(1); }
 }
 
+/* ── Accent-aware utility classes ── */
+.accent-bg-subtle {
+  background-color: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.accent-bg-medium {
+  background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.accent-text {
+  color: var(--accent);
+}
+.accent-border-subtle {
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.accent-border-medium {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.accent-ring {
+  --tw-ring-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 /* ── Hide scrollbar utility ── */
 .hide-scrollbar {
   -ms-overflow-style: none;
@@ -346,18 +380,16 @@
 /* ── Mobile bottom nav padding ── */
 @media (max-width: 767px) {
   body {
-    padding-bottom: 4rem;
+    padding-bottom: 80px;
   }
 }
 
-/* Smart mobile responsiveness helpers */
+/* ── Premium Mobile Experience ── */
 @media (max-width: 767px) {
-  /* Larger tap targets */
   button, a[role="button"], .glass a, input[type="button"], input[type="submit"] {
-    min-height: 42px;
+    min-height: 44px;
   }
 
-  /* Tables: slightly tighter but still readable + better scrolling */
   table {
     font-size: 12.5px;
   }
@@ -367,10 +399,154 @@
     padding-right: 0.65rem;
   }
 
-  /* Forum & cards breathe a little better on small screens when dense */
   .space-y-1 > * + * {
     margin-top: 6px;
   }
+
+  /* Native-feel card transitions */
+  .mobile-card {
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease, background 0.2s ease;
+  }
+  .mobile-card:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Better scroll momentum on mobile */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Smooth section transitions */
+  .mobile-section {
+    animation: mobile-fade-in 0.4s ease-out;
+  }
+}
+
+@keyframes mobile-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Desktop Premium Animations ── */
+@media (min-width: 768px) {
+  .premium-card-hover {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  .premium-card-hover:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 60px rgba(59, 130, 246, 0.04);
+  }
+
+  .premium-glass {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .premium-glass-strong {
+    background: rgba(255, 255, 255, 0.035);
+    backdrop-filter: blur(32px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Sidebar active indicator */
+  .sidebar-link {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .sidebar-link::before {
+    content: '';
+    position: absolute;
+    left: -16px;
+    top: 50%;
+    transform: translateY(-50%) scaleY(0);
+    width: 3px;
+    height: 20px;
+    border-radius: 0 4px 4px 0;
+    background: var(--accent, #3b82f6);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .sidebar-link.active::before {
+    transform: translateY(-50%) scaleY(1);
+  }
+  .sidebar-link.active {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+  }
+}
+
+/* ── Stat card micro-interactions ── */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.02) 100%);
+  pointer-events: none;
+}
+.stat-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.stat-card .stat-icon {
+  transition: all 0.3s ease;
+}
+.stat-card:hover .stat-icon {
+  transform: scale(1.05);
+}
+
+/* ── Number animation ── */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.count-anim {
+  animation: count-up 0.5s ease-out forwards;
+}
+
+/* ── Premium custom scrollbar ── */
+.premium-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+.premium-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.premium-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.premium-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+  transition: background 0.2s ease;
+}
+.premium-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.premium-scrollbar::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Chat message entrance ── */
+@keyframes message-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.message-enter {
+  animation: message-in 0.25s ease-out forwards;
 }
 
 /* Ensure focus rings are visible on mobile */

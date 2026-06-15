@@ -83,13 +83,13 @@ export default function Services() {
       });
 
       tl.fromTo(
-        headingRef.current?.querySelectorAll(".reveal"),
+        headingRef.current?.querySelectorAll(".reveal") as any,
         { y: 40, opacity: 0 },
         { y: 0, opacity: 1, stagger: 0.15, duration: 0.8, ease: "power3.out" }
       );
 
       tl.fromTo(
-        cardsRef.current?.querySelectorAll(".card"),
+        cardsRef.current?.querySelectorAll(".card") as any,
         { y: 60, opacity: 0, scale: 0.95 },
         {
           y: 0,
@@ -268,7 +268,7 @@ export default function Services() {
                 <div>
                   <p className="text-sm text-white">+ Monthly Maintenance</p>
                   <p className="text-xs text-slate-500">
-                    $50/mo — hosting, updates & support
+                    $25/mo — hosting, updates & support
                   </p>
                 </div>
               </label>

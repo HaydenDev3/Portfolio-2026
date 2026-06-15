@@ -21,7 +21,7 @@ export default function TrustBar() {
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo(
-        sectionRef.current?.querySelectorAll(".stat"),
+        sectionRef.current?.querySelectorAll(".stat") as any,
         { y: 30, opacity: 0 },
         {
           y: 0,

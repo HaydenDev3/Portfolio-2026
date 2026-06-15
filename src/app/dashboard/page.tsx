@@ -17,8 +17,15 @@ import {
   Ticket,
   Globe,
   User,
-  CreditCard
+  CreditCard,
+  BarChart3,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react";
+import ClientRevenueTrendChart from "@/components/ClientRevenueTrendChart";
+import ClientProjectsTierChart from "@/components/ClientProjectsTierChart";
+import ProjectProgress from "@/components/ProjectProgress";
+import BillingPortalButton from "@/components/BillingPortalButton";
 
 export const dynamic = "force-dynamic";
 
@@ -40,9 +47,7 @@ export default async function DashboardOverview() {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   if (effectiveIsClient && effectiveUserId) {
-    // Client personal overview - limited, necessary things (beautiful + fluent)
-    // Uses the impersonated user's id when "Use account as User" is active
-    const [client, linktreesCount] = await Promise.all([
+    const [client, linktreesCount, subscriptions, clientInvoices, clientProjects] = await Promise.all([
       prisma.client.findFirst({
         where: { userId: effectiveUserId },
         include: {
@@ -52,7 +57,16 @@ export default async function DashboardOverview() {
         },
       }),
       prisma.linktree.count({ where: { userId: effectiveUserId } }),
+      prisma.subscription.findMany({
+        where: { clientUserId: effectiveUserId, status: { in: ["ACTIVE", "PAUSED"] } },
+      }),
+      prisma.invoice.findMany({ where: { clientUserId: effectiveUserId } }),
+      prisma.project.findMany({ where: { clientUserId: effectiveUserId } }),
     ]);
+
+    const totalPaid = clientInvoices.filter((i) => i.status === "PAID").reduce((s, i) => s + i.amount, 0);
+    const totalPending = clientInvoices.filter((i) => i.status === "PENDING").reduce((s, i) => s + i.amount, 0);
+    const totalProjectValue = clientProjects.reduce((s, p) => s + p.price, 0);
 
     return (
       <div className="space-y-8">
@@ -135,6 +149,49 @@ export default async function DashboardOverview() {
           </div>
         </div>
 
+        {/* Spending summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="glass rounded-3xl p-5 border border-white/10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                <DollarSign size={17} className="text-emerald-400" />
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 font-space">Total Paid</div>
+                <div className="text-2xl font-semibold text-white font-mono tabular-nums">${(totalPaid / 100).toLocaleString()}</div>
+              </div>
+            </div>
+            {totalPending > 0 && (
+              <div className="flex items-center gap-2 text-xs text-amber-400 font-space">
+                <div className="w-2 h-2 rounded-full bg-amber-400/60" />
+                {totalPending > 0 && `${(totalPending / 100).toLocaleString()} pending`}
+              </div>
+            )}
+          </div>
+          <div className="glass rounded-3xl p-5 border border-white/10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                <Briefcase size={17} className="text-blue-400" />
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 font-space">Project Budget</div>
+                <div className="text-2xl font-semibold text-white font-mono tabular-nums">${(totalProjectValue / 100).toLocaleString()}</div>
+              </div>
+            </div>
+            {totalProjectValue > 0 && (
+              <div className="mt-2">
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-space mb-1">
+                  <span>Paid: ${(totalPaid / 100).toLocaleString()}</span>
+                  <span>{Math.round((totalPaid / totalProjectValue) * 100)}%</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                  <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${Math.min((totalPaid / totalProjectValue) * 100, 100)}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Quick actions - prominent like admin quick actions */}
         <div>
           <div className="flex items-baseline justify-between mb-3 px-1">
@@ -172,9 +229,12 @@ export default async function DashboardOverview() {
             {client?.projects?.length ? (
               <div className="divide-y divide-white/5 text-sm">
                 {client.projects.map(p => (
-                  <div key={p.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-white/5">
-                    <div className="font-medium text-white">{p.name}</div>
-                    <span className="text-xs px-3 py-1 rounded-full font-medium bg-white/5 text-slate-300">{p.status}</span>
+                  <div key={p.id} className="px-5 py-3.5 hover:bg-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium text-white">{p.name}</div>
+                      <span className="text-xs px-3 py-1 rounded-full font-medium bg-white/5 text-slate-300">{p.status}</span>
+                    </div>
+                    <ProjectProgress status={p.status} size="compact" />
                   </div>
                 ))}
               </div>
@@ -211,6 +271,58 @@ export default async function DashboardOverview() {
           </div>
         </div>
 
+        {/* Billing section for clients */}
+        <div className="glass rounded-3xl border border-white/10 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-blue-500/10 flex items-center justify-center">
+                <CreditCard size={16} className="text-emerald-400" />
+              </div>
+              <div>
+                <div className="font-semibold text-white">Billing &amp; Payments</div>
+                <div className="text-xs text-slate-500">Manage payment methods and view history</div>
+              </div>
+            </div>
+            <BillingPortalButton />
+          </div>
+        </div>
+
+        {/* Subscription section */}
+        {subscriptions.length > 0 && (
+          <div className="glass rounded-3xl border border-white/10 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center">
+                  <RefreshCw size={16} className="text-purple-400" />
+                </div>
+                <div>
+                  <div className="font-semibold text-white">Your Plan</div>
+                  <div className="text-xs text-slate-500">Subscription &amp; recurring billing</div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {subscriptions.map((sub: any) => (
+                <div key={sub.id} className="flex items-center justify-between px-3 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div>
+                    <div className="text-sm font-medium text-white font-space">{sub.plan}</div>
+                    <div className="text-[10px] text-slate-500 font-space">
+                      ${(sub.amount / 100).toLocaleString()}/mo{sub.currentPeriodEnd ? ` · Next billing ${new Date(sub.currentPeriodEnd).toLocaleDateString()}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium font-space ${
+                      sub.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+                    }`}>{sub.status}</span>
+                    <BillingPortalButton variant="compact" />
+
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Support quick access */}
         <div className="glass rounded-3xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-3">
@@ -243,6 +355,7 @@ export default async function DashboardOverview() {
     featuredTestimonials,
     totalInvoices,
     paidInvoices,
+    paidInvoicesForTrend,
   ] = await Promise.all([
     prisma.client.count(),
     prisma.client.count({ where: { status: "ACTIVE" } }),
@@ -264,6 +377,12 @@ export default async function DashboardOverview() {
     prisma.testimonial.count({ where: { isFeatured: true } }),
     prisma.invoice.count(),
     prisma.invoice.count({ where: { status: "PAID" } }),
+    prisma.invoice.findMany({
+      where: { status: "PAID", paidAt: { not: null } },
+      select: { amount: true, paidAt: true },
+      orderBy: { paidAt: "desc" },
+      take: 36,
+    }),
   ]);
 
   const recentLeads = await prisma.lead.findMany({
@@ -291,6 +410,24 @@ export default async function DashboardOverview() {
     totalProjects > 0 ? Math.round((completedProjects / totalProjects) * 100) : 0;
   const activeRate =
     totalClients > 0 ? Math.round((activeClients / totalClients) * 100) : 0;
+
+  // Graph data - processed for beautiful Recharts (admin overview)
+  const monthlyMap = new Map<string, { revenue: number }>();
+  (paidInvoicesForTrend as any[]).forEach((inv: any) => {
+    if (!inv.paidAt) return;
+    const d = new Date(inv.paidAt);
+    const key = d.toLocaleString("default", { month: "short", year: "2-digit" });
+    const curr = monthlyMap.get(key) || { revenue: 0 };
+    curr.revenue += inv.amount || 0;
+    monthlyMap.set(key, curr);
+  });
+  const revenueTrend = Array.from(monthlyMap.entries()).reverse().slice(0, 6).map(([month, v]) => ({ month, revenue: v.revenue }));
+
+  const tierData = [
+    { name: "ESSENTIAL", value: await prisma.project.count({ where: { tier: "ESSENTIAL" } }), color: "#3b82f6" },
+    { name: "GROWTH", value: await prisma.project.count({ where: { tier: "GROWTH" } }), color: "#10b981" },
+    { name: "PREMIUM", value: await prisma.project.count({ where: { tier: "PREMIUM" } }), color: "#8b5cf6" },
+  ].filter((t) => t.value > 0);
 
   return (
     <div className="space-y-8">
@@ -422,6 +559,39 @@ export default async function DashboardOverview() {
           <div>
             <div className="text-xs text-slate-500 font-space">Projects Completed</div>
             <div className="text-2xl font-semibold tracking-tight text-white tabular-nums">{completedProjects}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Graph Statistics - beautiful, responsive Recharts for trends (Admin + mobile perfect) */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 px-1">
+          <BarChart3 size={16} className="text-blue-400" />
+          <div className="text-sm font-semibold text-slate-300 tracking-[0.5px] font-space">STATISTICS &amp; TRENDS</div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Revenue Trend Line - fluent premium look */}
+          <div className="glass rounded-3xl border border-white/10 p-5">
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <div className="font-semibold text-white">Revenue Trend</div>
+                <div className="text-xs text-slate-500">Last 6 months • Paid invoices</div>
+              </div>
+              <Link href="/dashboard/invoices" className="text-xs text-blue-400 hover:text-blue-300">Details →</Link>
+            </div>
+            <ClientRevenueTrendChart data={revenueTrend as any} />
+          </div>
+
+          {/* Projects by Tier Bar */}
+          <div className="glass rounded-3xl border border-white/10 p-5">
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <div className="font-semibold text-white">Projects by Tier</div>
+                <div className="text-xs text-slate-500">Distribution across packages</div>
+              </div>
+            </div>
+            <ClientProjectsTierChart data={tierData as any} />
           </div>
         </div>
       </div>

@@ -32,6 +32,9 @@ export async function getEffectiveUser() {
       effectiveUserId = target.id;
       effectiveRole = target.role;
       effectiveUser = target;
+    } else {
+      // Stale impersonation cookie (target was deleted/recreated). Fall back to real admin.
+      // Do not pretend we are still impersonating.
     }
   }
 

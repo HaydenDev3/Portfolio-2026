@@ -97,6 +97,7 @@ model User {
   company        String?
   notes          String?
   clientStatus   ClientStatus  @default(ACTIVE)
+  emailPreferences Json?       // { forumReplies?: boolean, subUpdates?: boolean, specials?: boolean, settingsChanges?: boolean, forumNewTopics?: boolean, frequencies?: { forum?: 'immediate'|'daily'|'weekly'|'off', sub?: ..., specials?: ..., settings?: ... } }
   hashedPassword String
   role           UserRole    @default(CLIENT)
   banned         Boolean     @default(false)
@@ -115,6 +116,7 @@ model User {
   assignedTickets     SupportTicket[] @relation("AssignedStaffToTickets")
   clientSubscriptions Subscription[]  @relation("ClientUserToSubscriptions")
   clientTestimonials  Testimonial[]   @relation("ClientUserToTestimonials")
+  assignedTasks       ProjectTask[]   @relation("AssignedTaskToUser")
   linktrees      Linktree[]  // multiple named linktrees, clients limited to 2, admins unlimited
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -222,6 +224,10 @@ model Project {
   liveUrl      String?
   invoices     Invoice[]
   comments     ProjectComment[]
+  tasks        ProjectTask[]
+  meetings     ProjectMeeting[]
+  timeEntries  TimeEntry[]
+  milestones   ProjectMilestone[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -241,6 +247,7 @@ model Invoice {
   stripePaymentIntentId String?        @unique
   dueDate               DateTime?
   paidAt                DateTime?
+  refundedAt            DateTime?
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 }
@@ -288,6 +295,7 @@ model ForumTopic {
   viewCount  Int          @default(0)
   posts      ForumPost[]
   votes      ForumVote[]
+  bookmarks  Bookmark[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 }
@@ -348,4 +356,109 @@ model LiveViewer {
   city      String?
   country   String?
   lastSeen  DateTime @default(now())
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model ProjectTask {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  assigneeId  String?
+  assignee    User?        @relation("AssignedTaskToUser", fields: [assigneeId], references: [id])
+  dueDate     DateTime?
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ProjectMeeting {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id])
+  title       String
+  date        DateTime
+  attendees   Json?        // string[]
+  summary     String?
+  actionItems Json?        // string[]
+  notes       String?
+  createdBy   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  userId      String?
+  description String
+  hours       Float
+  date        DateTime @default(now())
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model ProjectMilestone {
+  id          String           @id @default(cuid())
+  projectId   String
+  project     Project          @relation(fields: [projectId], references: [id])
+  name        String
+  description String?
+  dueDate     DateTime?
+  status      MilestoneStatus  @default(PENDING)
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETE
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  topicId   String
+  topic     ForumTopic @relation(fields: [topicId], references: [id])
+  createdAt DateTime @default(now())
+  @@unique([userId, topicId])
+}
+
+model PollOption {
+  id        String     @id @default(cuid())
+  topicId   String
+  text      String
+  votes     PollVote[]
+  createdAt DateTime   @default(now())
+}
+
+model PollVote {
+  id        String     @id @default(cuid())
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id])
+  userId    String
+  createdAt DateTime   @default(now())
+  @@unique([optionId, userId])
+}
+
+model SiteAnnouncement {
+  id        String     @id @default(cuid())
+  title     String
+  message   String
+  type      String     @default("info")
+  startDate DateTime?
+  endDate   DateTime?
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }

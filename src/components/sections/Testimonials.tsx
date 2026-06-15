@@ -14,6 +14,8 @@ interface Testimonial {
   content: string;
   rating: number;
   source: string;
+  isApproved?: boolean;
+  isFeatured?: boolean;
   client: { name: string; company: string | null } | null;
 }
 
@@ -51,13 +53,13 @@ export default function Testimonials() {
       });
 
       tl.fromTo(
-        contentRef.current?.querySelectorAll(".reveal"),
+        contentRef.current?.querySelectorAll(".reveal") as any,
         { y: 40, opacity: 0 },
         { y: 0, opacity: 1, stagger: 0.12, duration: 0.8, ease: "power3.out" }
       );
 
       tl.fromTo(
-        cardsRef.current?.querySelectorAll(".testimonial-card"),
+        cardsRef.current?.querySelectorAll(".testimonial-card") as any,
         { y: 50, opacity: 0, scale: 0.95 },
         {
           y: 0,

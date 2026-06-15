@@ -30,13 +30,13 @@ export default function Contact() {
       });
 
       tl.fromTo(
-        contentRef.current?.querySelectorAll(".reveal"),
+        contentRef.current?.querySelectorAll(".reveal") as any,
         { y: 40, opacity: 0 },
         { y: 0, opacity: 1, stagger: 0.12, duration: 0.8, ease: "power3.out" }
       );
 
       tl.fromTo(
-        formRef.current?.querySelectorAll(".field"),
+        formRef.current?.querySelectorAll(".field") as any,
         { y: 30, opacity: 0 },
         { y: 0, opacity: 1, stagger: 0.08, duration: 0.6, ease: "power3.out" },
         "-=0.3"
@@ -71,7 +71,7 @@ export default function Contact() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, email, projectType, message }),
-        }).catch(() => {});
+        }).catch((e) => console.error("Failed to submit contact form:", e));
 
         setSubmitted(true);
         form.reset();
@@ -185,7 +185,7 @@ export default function Contact() {
             className="max-w-lg mx-auto space-y-3 md:space-y-4 text-left"
           >
             {/* Honeypot */}
-            <input type="checkbox" name="botcheck" className="hidden" style={{ display: "none" }} />
+            <input type="checkbox" name="botcheck" className="absolute -left-[9999px] opacity-0" tabIndex={-1} autoComplete="off" />
 
             <div className="field grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
               <input

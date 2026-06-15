@@ -30,7 +30,7 @@ export default function ErrorPage({
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
       tl.fromTo(
-        digits.current?.querySelectorAll(".digit"),
+        digits.current?.querySelectorAll(".digit") as any,
         { y: -200, opacity: 0, scale: 0.5, rotate: 15 },
         { y: 0, opacity: 1, scale: 1, rotate: 0, stagger: 0.12, duration: 0.9, ease: "back.out(2)" }
       )

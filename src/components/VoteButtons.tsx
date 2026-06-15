@@ -14,7 +14,7 @@ export function VoteButtons({
   size?: "default" | "compact";
 }) {
   const isCompact = size === "compact";
-  const iconSize = isCompact ? 15 : 17;
+  const iconSize = isCompact ? 14 : 17;
   const btnPad = isCompact ? "p-0.5" : "p-1";
 
   return (

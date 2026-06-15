@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hash } from "bcryptjs";
+import { generateUsername } from "@/lib/username";
+import { generateAvatarDataUrl } from "@/lib/avatar";
 
 export async function POST(req: Request) {
   try {
@@ -35,6 +37,8 @@ export async function POST(req: Request) {
       data: {
         email: adminEmail,
         name: "Admin",
+        username: await generateUsername("Admin"),
+        image: generateAvatarDataUrl("Admin", adminEmail),
         hashedPassword,
         role: "ADMIN",
       },

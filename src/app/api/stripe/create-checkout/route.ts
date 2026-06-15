@@ -18,30 +18,24 @@ export async function POST(req: Request) {
 
     const lineItems: { price: string; quantity: number }[] = [];
 
-    if (plan.type === "one-time") {
-      if (!plan.id) {
-        return NextResponse.json(
-          { error: "Price ID not configured" },
-          { status: 500 }
-        );
-      }
-      lineItems.push({ price: plan.id, quantity: 1 });
-    } else {
-      if (!plan.id) {
-        return NextResponse.json(
-          { error: "Price ID not configured" },
-          { status: 500 }
-        );
-      }
-      lineItems.push({ price: plan.id, quantity: 1 });
+    // Push the main tier price (whether one-time website package or recurring maintenance)
+    if (!plan.id) {
+      return NextResponse.json(
+        { error: "Price ID not configured" },
+        { status: 500 }
+      );
     }
+    lineItems.push({ price: plan.id, quantity: 1 });
 
     if (addon && PLANS.maintenance.id) {
       lineItems.push({ price: PLANS.maintenance.id, quantity: 1 });
     }
 
     const session = await stripe.checkout.sessions.create({
-      mode: tier === "maintenance" ? "subscription" : "payment",
+      // Use subscription mode whenever the cart contains a recurring item
+      // (either the main "maintenance" tier, or the maintenance addon on a one-time website package).
+      // Stripe does not allow recurring prices in `payment` mode.
+      mode: (tier === "maintenance" || addon) ? "subscription" : "payment",
       line_items: lineItems,
       customer_email: email,
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/thank-you?session_id={CHECKOUT_SESSION_ID}`,

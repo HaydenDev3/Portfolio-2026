@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { 
   Palette, Globe, Zap, Shield, Database, Download, RefreshCw, 
-  Settings as SettingsIcon, AlertTriangle, ExternalLink, Check 
+  Settings as SettingsIcon, AlertTriangle, ExternalLink, Check, Send, Mail 
 } from "lucide-react";
 import { siteConfig } from "@/lib/config";
 import { applyTheme, applyAccent, getStoredTheme, getStoredAccent, type Theme } from "@/lib/utils";
@@ -94,6 +94,12 @@ export default function AdminSettingsPage() {
     secret: "Check server",
   });
 
+  // Webhook / Email Tester
+  const [testType, setTestType] = useState<"welcome" | "payment" | "admin" | "forum_reply" | "new_ticket" | "ticket_reply" | "raw" | "special">("payment");
+  const [testTo, setTestTo] = useState(siteConfig.email || "hayd3nford2008@gmail.com");
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
   // Initialize from shared storage (ensures settings page matches the rest of the site immediately)
   useEffect(() => {
     const initialTheme = getStoredTheme();
@@ -118,7 +124,7 @@ export default function AdminSettingsPage() {
     const onStorage = (e: StorageEvent) => {
       if (e.key === "theme" && e.newValue) {
         let t = e.newValue as Theme;
-        if (t === "light") t = "dark";
+        if (t === ("light" as Theme)) t = "dark";
         setTheme(t);
       }
       if (e.key === "accent" && e.newValue) setAccent(e.newValue);
@@ -294,6 +300,92 @@ export default function AdminSettingsPage() {
       }
     } catch {
       showToast("Stripe test failed (network or keys)", "error");
+    }
+  }
+
+  // Webhook + Email tester — calls the new admin test endpoint
+  async function runWebhookTest() {
+    if (!testTo) {
+      showToast("Please enter a recipient email", "error");
+      return;
+    }
+
+    setTestLoading(true);
+    setTestResult(null);
+
+    const payload: any = { type: testType, to: testTo };
+
+    // Provide sensible defaults per type
+    if (testType === "welcome") {
+      payload.name = "Test Client";
+      payload.tempPassword = "test-pass-9876";
+      payload.purchase = { tier: "Premium", addon: true, amount: 300000 };
+    } else if (testType === "payment") {
+      payload.name = "Test Client";
+      payload.amount = 150000;
+      payload.description = "Growth Website + Monthly Maintenance";
+      payload.paymentRef = "pi_test_" + Date.now();
+    } else if (testType === "admin") {
+      payload.subject = "Test Admin Alert from Settings";
+      payload.message = "This is a simulated admin notification triggered from the webhook/email tester.";
+      payload.details = { source: "Admin Settings", test: true };
+    } else if (testType === "forum_reply") {
+      payload.topicTitle = "How do you handle image optimization in Next.js 16?";
+      payload.replierName = "Alex Developer";
+      payload.excerpt = "I found that using the new Image component with the remotePatterns config gave the best results. The build times dropped significantly.";
+    } else if (testType === "new_ticket") {
+      payload.subject = "Images not loading after recent deploy";
+      payload.message = "After the latest production deploy, some background images are broken on mobile Safari. Any ideas?";
+      payload.clientName = "Test Client";
+      payload.isAdminNotification = testTo === siteConfig.email;
+    } else if (testType === "ticket_reply") {
+      payload.ticketSubject = "Images not loading after recent deploy";
+      payload.senderName = "Hayden (Support)";
+      payload.message = "Thanks for the report. I've identified the issue — a missing environment variable for the image host. Fix is deploying now.";
+      payload.isReplyFromStaff = true;
+    } else if (testType === "special") {
+      payload.subject = "Test Special Offer";
+      payload.message = "This is a test special broadcast from the admin settings tester. Check your prefs!";
+      // If we have userId from somewhere, but for test use the 'to' email resolution in API
+    } else if (testType === "raw") {
+      payload.subject = "Custom Raw Test Email";
+      payload.html = `<p style="font-size:15px;">This is a <strong>raw HTML</strong> test email sent from the admin tester. Great for quick deliverability checks.</p>`;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s client timeout
+
+    try {
+      const res = await fetch("/api/admin/test-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const json = await res.json();
+      if (res.ok) {
+        setTestResult(json.result || "Test sent successfully");
+        showToast(`Test sent to ${testTo}`, "success");
+      } else {
+        const msg = json.error || "Test failed";
+        setTestResult(msg);
+        showToast(msg, "error");
+      }
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      let msg = "Failed to run test";
+      if (e.name === "AbortError") {
+        msg = "Test request timed out. In dev mode the first request after editing files (charts, emails, tester) can take 15-25s while Next.js compiles the route. Try again in a moment.";
+      } else {
+        console.error(e);
+      }
+      setTestResult(msg);
+      showToast(msg, "error");
+    } finally {
+      setTestLoading(false);
     }
   }
 
@@ -549,6 +641,74 @@ export default function AdminSettingsPage() {
             <p className="text-[10px] text-slate-500 pt-1 font-space">Configure via NEXT_PUBLIC_* variables in Vercel.</p>
           </div>
         </div>
+      </div>
+
+      {/* WEBHOOK & EMAIL TESTER — beautiful fluent testing surface */}
+      <div className="glass p-6 rounded-2xl border border-white/10 mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Send size={16} className="text-blue-400" />
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider font-space">Webhook &amp; Email Tester</h2>
+        </div>
+
+        <p className="text-xs text-slate-500 mb-5 font-space">Trigger real emails (via Resend) and simulate webhook events. Perfect for testing receipts, forum replies, ticket flows, and admin notifications without leaving the dashboard.</p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Type selector */}
+          <div className="lg:col-span-4">
+            <label className="block text-xs text-slate-500 mb-1.5 font-space">Event Type</label>
+            <select
+              value={testType}
+              onChange={(e) => { setTestType(e.target.value as any); setTestResult(null); }}
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-800/60 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500/40 font-space"
+            >
+              <option value="payment">Successful Payment / Receipt</option>
+              <option value="welcome">Welcome + Credentials (new client)</option>
+              <option value="admin">Admin Notification</option>
+              <option value="forum_reply">Forum Reply Notification</option>
+              <option value="new_ticket">New Support Ticket</option>
+              <option value="ticket_reply">Ticket Reply</option>
+              <option value="special">Special / Promo Broadcast (prefs-aware)</option>
+              <option value="raw">Raw Custom HTML Email</option>
+            </select>
+          </div>
+
+          {/* Recipient */}
+          <div className="lg:col-span-5">
+            <label className="block text-xs text-slate-500 mb-1.5 font-space">Send To (email)</label>
+            <input
+              type="email"
+              value={testTo}
+              onChange={(e) => setTestTo(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-800/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/40 font-space"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          {/* Action */}
+          <div className="lg:col-span-3 flex items-end">
+            <button
+              onClick={runWebhookTest}
+              disabled={testLoading || !testTo}
+              className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-600/90 disabled:opacity-60 text-white text-sm font-medium font-space transition-all"
+            >
+              {testLoading ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
+              {testLoading ? "Sending..." : "Send Test"}
+            </button>
+          </div>
+        </div>
+
+        {/* Result */}
+        {testResult && (
+          <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-space">
+            ✓ {testResult}
+          </div>
+        )}
+
+        <p className="text-[10px] text-slate-500 mt-3 font-space">
+          These will send real emails using your Resend key. Check the recipient inbox (and spam). Use your own email for quick testing.
+          <br />
+          <span className="text-amber-400/80">Dev note:</span> First "Send Test" after code changes (new graphs, email themes, this tester) often triggers a full route recompile (10-25s). Subsequent tests are fast. The "aborted" errors in logs are usually just the dev server catching up.
+        </p>
       </div>
 
       {/* SYSTEM & POWER TOOLS */}

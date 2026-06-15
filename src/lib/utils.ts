@@ -9,12 +9,10 @@ export function cn(...inputs: ClassValue[]) {
 // Theme system - centralized for consistent, simultaneous application across the entire site
 // (public pages, dashboard sections, client area, modals, headers, etc.)
 // Note: Light mode has been removed. Only dark (default), oled, and system (resolves to dark) remain.
-export type Theme = "dark" | "oled" | "system"
+export type Theme = "dark" | "oled" | "system" | "light"
 
 export function resolveTheme(t: Theme): "dark" | "oled" {
-  if (t === "system") {
-    // System always resolves to dark (light mode support removed).
-    // We ignore OS light preference to enforce the dark-first experience.
+  if (t === "system" || t === "light") {
     return "dark"
   }
   return t
@@ -34,7 +32,6 @@ export function applyTheme(newTheme: Theme) {
     root.classList.add("dark")
   }
 
-  // Migrate legacy "light" value to "dark"
   const valueToStore = newTheme === "light" ? "dark" : newTheme
   localStorage.setItem("theme", valueToStore)
 

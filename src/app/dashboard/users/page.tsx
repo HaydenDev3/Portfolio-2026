@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import UserProfilePopover from "@/components/UserProfilePopover";
 import ProfilePreviewModal from "@/components/ProfilePreviewModal";
+import AccountSettingsModal from "@/components/AccountSettingsModal";
 import { useToast } from "@/components/Toast";
 import { getPlatformLabel, getSocialIcon } from "@/lib/utils";
+import { Settings } from "lucide-react";
 
 interface User {
   id: string;
@@ -47,6 +49,7 @@ export default function AdminUsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [message, setMessage] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Strict client guard + determine role
   useEffect(() => {
@@ -264,6 +267,13 @@ export default function AdminUsersPage() {
             {displayList.length} accounts (portal users + legacy clients merged)
           </p>
         </div>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 flex items-center gap-1.5 font-space"
+          title="Open your account settings (photos, auth, notifications)"
+        >
+          <Settings size={14} /> My settings
+        </button>
         {canCreate && (
           <div className="flex items-center gap-2">
             <button
@@ -757,6 +767,12 @@ export default function AdminUsersPage() {
         open={!!previewUser}
         onClose={() => setPreviewUser(null)}
         linkedProjects={previewUser?.linkedProjects}
+      />
+
+      {/* Account settings modal trigger for the current admin (more places) */}
+      <AccountSettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
     </div>
   );

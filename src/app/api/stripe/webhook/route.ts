@@ -3,6 +3,14 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
 import { hash } from "bcryptjs";
 import crypto from "crypto";
+import {
+  sendWelcomeEmail,
+  sendPaymentReceipt,
+  sendAdminNotification,
+  sendUserNotification,
+} from "@/lib/email";
+import { generateUsername } from "@/lib/username";
+import { generateAvatarDataUrl } from "@/lib/avatar";
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +37,19 @@ export async function POST(req: Request) {
         const metadata = session.metadata;
         if (!metadata) break;
 
+        // Handle direct invoice payments (Pay Now)
+        if (metadata.type === "invoice-payment" && metadata.invoiceId) {
+          await prisma.invoice.update({
+            where: { id: metadata.invoiceId },
+            data: {
+              status: "PAID",
+              paidAt: new Date(),
+              stripePaymentIntentId: session.payment_intent as string,
+            },
+          });
+          break;
+        }
+
         const customerEmail =
           metadata.customer_email ?? session.customer_details?.email;
         const customerName =
@@ -38,27 +59,62 @@ export async function POST(req: Request) {
 
         if (!customerEmail) break;
 
-        const tempPassword = crypto.randomBytes(16).toString("hex");
-        const hashedPassword = await hash(tempPassword, 12);
-
         const existingUser = await prisma.user.findUnique({
           where: { email: customerEmail },
         });
 
         let userId: string;
+        let tempPassword: string | undefined;
 
         if (existingUser) {
           userId = existingUser.id;
         } else {
+          tempPassword = crypto.randomBytes(16).toString("hex");
+          const hashedPassword = await hash(tempPassword, 12);
+
+          const username = await generateUsername(customerName);
+          const avatar = generateAvatarDataUrl(customerName, customerEmail);
           const user = await prisma.user.create({
             data: {
               email: customerEmail,
               name: customerName,
+              username,
+              image: avatar,
               hashedPassword,
               role: "CLIENT",
             },
           });
           userId = user.id;
+
+          // Send a proper welcome email directly to the customer with their temporary password + purchase summary.
+          console.log(`[STRIPE] New client portal account for ${customerEmail} | Temp password: ${tempPassword}`);
+
+          try {
+            await sendWelcomeEmail({
+              to: customerEmail,
+              name: customerName,
+              tempPassword,
+              purchase: {
+                tier,
+                addon,
+                amount: session.amount_total || undefined,
+              },
+            });
+
+            // Also notify the admin inbox (useful for tracking)
+            await sendAdminNotification({
+              subject: "New Paid Client",
+              message: `${customerName} (${customerEmail}) just purchased ${tier || "package"}${addon ? " + maintenance" : ""}.`,
+              details: {
+                email: customerEmail,
+                tier,
+                addon,
+                amount: session.amount_total,
+              },
+            });
+          } catch (e) {
+            console.error("[STRIPE WEBHOOK] Failed to send welcome email:", e);
+          }
         }
 
         const existingClient = await prisma.client.findUnique({
@@ -118,6 +174,20 @@ export async function POST(req: Request) {
                 paidAt: new Date(),
               },
             });
+
+            // Send receipt to client
+            try {
+              await sendPaymentReceipt({
+                to: customerEmail,
+                name: customerName,
+                amount: session.amount_total,
+                description: `${tier} Website${addon ? " + Maintenance" : ""}`,
+                date: new Date(),
+                paymentRef: session.payment_intent?.toString() ?? undefined,
+              });
+            } catch (e) {
+              console.error("[STRIPE] Failed receipt email (website):", e);
+            }
           }
         }
 
@@ -153,6 +223,19 @@ export async function POST(req: Request) {
               paidAt: new Date(),
             },
           });
+
+          try {
+            await sendPaymentReceipt({
+              to: customerEmail,
+              name: customerName,
+              amount: session.amount_total,
+              description: "Monthly Maintenance",
+              date: new Date(),
+              paymentRef: session.payment_intent?.toString() ?? undefined,
+            });
+          } catch (e) {
+            console.error("[STRIPE] Failed receipt email (maintenance):", e);
+          }
         }
 
         break;
@@ -187,6 +270,36 @@ export async function POST(req: Request) {
                 ),
               },
             });
+
+            // Receipt for recurring maintenance payment
+            try {
+              // Best effort to get client email
+              const client = await prisma.client.findUnique({ where: { id: sub.clientId } });
+              if (client) {
+                await sendPaymentReceipt({
+                  to: client.email,
+                  name: client.name,
+                  amount: invoice.amount_paid,
+                  description: "Monthly Maintenance (recurring)",
+                  date: new Date(),
+                  paymentRef: invoice.payment_intent?.toString() ?? undefined,
+                });
+              }
+            } catch (e) {
+              console.error("[STRIPE] Failed recurring receipt email:", e);
+            }
+
+            // Subscription update notification (if user has pref)
+            try {
+              if (sub.clientUserId) {
+                await sendUserNotification(sub.clientUserId, "sub", {
+                  description: "Monthly Maintenance (recurring)",
+                  amount: invoice.amount_paid,
+                });
+              }
+            } catch (e) {
+              console.error("[STRIPE] Failed sub update email:", e);
+            }
           }
         }
         break;
@@ -202,6 +315,34 @@ export async function POST(req: Request) {
             where: { id: existingSub.id },
             data: { status: "CANCELLED" },
           });
+        }
+        break;
+      }
+
+      // Keep local invoices in sync when refunds are issued (UI, Stripe dashboard, or customer portal)
+      case "charge.refunded":
+      case "refund.created": {
+        const obj = event.data.object as any;
+        // Both events carry the payment_intent we stored on the Invoice
+        const paymentIntentId =
+          (typeof obj.payment_intent === "string" ? obj.payment_intent : obj.payment_intent?.id) ||
+          (typeof obj.charge === "object" && obj.charge?.payment_intent) ||
+          null;
+
+        if (paymentIntentId) {
+          const inv = await prisma.invoice.findUnique({
+            where: { stripePaymentIntentId: paymentIntentId },
+          });
+          if (inv && inv.status !== "REFUNDED") {
+            await prisma.invoice.update({
+              where: { id: inv.id },
+              data: {
+                status: "REFUNDED",
+                refundedAt: new Date(),
+              },
+            });
+            console.log(`[STRIPE] Marked invoice ${inv.id} as REFUNDED from ${event.type}`);
+          }
         }
         break;
       }

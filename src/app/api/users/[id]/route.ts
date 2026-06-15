@@ -33,8 +33,7 @@ export async function DELETE(
     await prisma.userBadge.deleteMany({ where: { userId: id } }).catch(() => {});
     try {
       // Linktree may not be present in the client if not regenerated
-      // @ts-expect-error - dynamic model
-      await (prisma.linktree?.deleteMany?.({ where: { userId: id } }) ?? Promise.resolve());
+      await prisma.linktree.deleteMany({ where: { userId: id } }).catch(() => {});
     } catch {}
     // Unlink client record (keep project/invoice data but remove portal link)
     await prisma.client.updateMany({ where: { userId: id }, data: { userId: null } }).catch(() => {});

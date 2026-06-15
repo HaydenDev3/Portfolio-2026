@@ -1,9 +1,12 @@
 import Stripe from "stripe";
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", {
-  apiVersion: "2025-03-31.basil",
+  apiVersion: "2026-05-27.dahlia",
   typescript: true,
 });
+
+// NOTE: When using test keys (sk_test_...), you MUST also use matching test price IDs
+// created in Stripe Test mode. Live price IDs will not work with test secret keys.
 
 export const PLANS = {
   essential: {

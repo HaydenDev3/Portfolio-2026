@@ -31,18 +31,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: invoices, total });
     }
 
-    // Client view or impersonated-as-client: show only invoices belonging to the effective user via legacy client linkage
-    // (invoices are still primarily tied to legacy Client; we resolve via the effective user's email or direct if we add clientUserId later)
+    // Client view or impersonated-as-client: show only invoices belonging to the effective user
+    // Support both legacy Client linkage + direct clientUserId (for users created via Stripe checkout)
     const actingUserEmail = (await auth())?.user?.email ?? "";
     const legacyClient = await prisma.client.findUnique({
       where: { email: actingUserEmail },
     });
 
-    const where: any = legacyClient
-      ? { clientId: legacyClient.id }
-      : { /* no match for pure userId-only case; fall back to empty */ id: "__none__" };
+    const where: any = {
+      OR: [
+        legacyClient ? { clientId: legacyClient.id } : undefined,
+        effectiveUserId ? { clientUserId: effectiveUserId } : undefined,
+      ].filter(Boolean),
+    };
 
-    // If in future invoices get clientUserId we can OR it here using effectiveUserId
+    if (!where.OR.length) {
+      where.id = "__none__";
+    }
+
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
         where,

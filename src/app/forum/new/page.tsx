@@ -1,9 +1,20 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Image, Loader2, Upload } from "lucide-react";
+import { Image, Loader2, Upload, Eye, Edit3 } from "lucide-react";
+import dynamic from "next/dynamic";
+import ForumToolbar from "@/components/ForumToolbar";
+import ForumMentions from "@/components/ForumMentions";
+
+const MarkdownRenderer = dynamic(() => import("@/components/MarkdownRenderer"), { ssr: false });
+
+function readingTime(content: string): string {
+  const words = content.trim().split(/\s+/).length;
+  const min = Math.ceil(words / 200);
+  return min < 1 ? "<1 min read" : `${min} min read`;
+}
 
 function NewTopicForm() {
   const router = useRouter();
@@ -19,6 +30,25 @@ function NewTopicForm() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [preview, setPreview] = useState(false);
+  const [pollEnabled, setPollEnabled] = useState(false);
+  const [pollOptions, setPollOptions] = useState([""]);
+
+  const contentLength = useMemo(() => content.length, [content]);
+  const readTime = useMemo(() => readingTime(content), [content]);
+
+  function handleToolbarInsert(before: string, after = "", placeholder = "") {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = content.substring(start, end) || placeholder;
+    setContent(content.slice(0, start) + before + selected + after + content.slice(end));
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + before.length;
+    });
+  }
 
   useEffect(() => {
     fetch("/api/forum/categories")
@@ -94,7 +124,7 @@ function NewTopicForm() {
     const res = await fetch("/api/forum/topics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, content, categoryId }),
+      body: JSON.stringify({ title, content, categoryId, pollEnabled, pollOptions: pollEnabled ? pollOptions.filter(Boolean) : undefined }),
     });
 
     setSubmitting(false);
@@ -154,18 +184,78 @@ function NewTopicForm() {
             className="w-full px-0 py-2 bg-transparent text-lg text-white placeholder:text-slate-600 focus:outline-none border-b border-transparent focus:border-blue-500/30 font-space font-semibold"
           />
 
-          <div className="relative">
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onPaste={handlePaste}
-              required
-              rows={10}
-              placeholder="What's on your mind? Markdown supported. Paste images directly or use the image button below."
-              className="w-full px-0 py-2 bg-transparent text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none resize-none font-space leading-relaxed"
-            />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <ForumToolbar textareaRef={textareaRef} onInsert={handleToolbarInsert} />
+              <div className="flex items-center gap-2">
+                <button onClick={() => setPollEnabled(!pollEnabled)}
+                  className={`text-[10px] px-2.5 py-1 rounded-lg font-medium font-space transition-all ${pollEnabled ? "accent-bg-subtle accent-text" : "text-slate-400 hover:text-white bg-white/5"}`}>
+                  📊 Poll
+                </button>
+                <span className="text-[10px] text-slate-600 font-space">{readTime}</span>
+                <button onClick={() => setPreview(!preview)}
+                  className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg font-medium font-space transition-all ${preview ? "accent-bg-subtle accent-text" : "text-slate-400 hover:text-white bg-white/5"}`}>
+                  {preview ? <Edit3 size={11} /> : <Eye size={11} />}
+                  {preview ? "Edit" : "Preview"}
+                </button>
+              </div>
+            </div>
+            <div className="relative">
+              <ForumMentions textareaRef={textareaRef} onInsert={(v) => setContent(v)} />
+              {preview ? (
+                <div className="premium-glass-strong rounded-xl p-4 min-h-[200px]">
+                  <MarkdownRenderer content={content} />
+                </div>
+              ) : (
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  onPaste={handlePaste}
+                  required
+                  rows={10}
+                  placeholder="What's on your mind? Type @ to mention someone. Markdown supported. Paste images directly."
+                  className="w-full px-0 py-2 bg-transparent text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none resize-none font-space leading-relaxed"
+                />
+              )}
+            </div>
+            {contentLength > 0 && (
+              <div className="text-[10px] text-slate-600 font-space text-right mt-1">{contentLength} characters</div>
+            )}
           </div>
+
+          {/* Poll creator */}
+          {pollEnabled && (
+            <div className="premium-glass-strong rounded-2xl p-4 space-y-2">
+              <div className="text-xs font-semibold text-white font-space">📊 Add Poll</div>
+              <input
+                value={pollOptions[0]}
+                onChange={(e) => setPollOptions([e.target.value, ...pollOptions.slice(1)])}
+                placeholder="Option 1"
+                className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space"
+              />
+              {pollOptions.slice(1).map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    value={opt}
+                    onChange={(e) => setPollOptions(pollOptions.map((o, j) => j === i + 1 ? e.target.value : o))}
+                    placeholder={`Option ${i + 2}`}
+                    className="flex-1 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space"
+                  />
+                  {pollOptions.length > 2 && (
+                    <button onClick={() => setPollOptions(pollOptions.filter((_, j) => j !== i + 1))}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 transition-all">
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 10 && (
+                <button onClick={() => setPollOptions([...pollOptions, ""])}
+                  className="text-xs text-blue-400 hover:text-blue-300 font-space">+ Add option</button>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <input

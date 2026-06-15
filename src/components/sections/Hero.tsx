@@ -33,7 +33,7 @@ export default function Hero() {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
       tl.fromTo(
-        titleRef.current?.querySelectorAll(".line"),
+        titleRef.current?.querySelectorAll(".line") as any,
         { y: startY, opacity: 0, rotateX: isMobile ? 0 : -15 },
         { y: 0, opacity: 1, rotateX: 0, stagger: 0.12, duration: isMobile ? 0.7 : 1 }
       )
@@ -44,13 +44,13 @@ export default function Hero() {
           "-=0.3"
         )
         .fromTo(
-          cardsRef.current?.querySelectorAll(".pricing-card"),
+          cardsRef.current?.querySelectorAll(".pricing-card") as any,
           { y: 40, opacity: 0 },
           { y: 0, opacity: 1, stagger: 0.1, duration: 0.6 },
           "-=0.2"
         )
         .fromTo(
-          ctaRef.current?.querySelectorAll(".btn"),
+          ctaRef.current?.querySelectorAll(".btn") as any,
           { y: 20, opacity: 0 },
           { y: 0, opacity: 1, stagger: 0.1, duration: 0.5 },
           "-=0.2"

@@ -3,11 +3,23 @@ import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { LayoutDashboard, FolderOpen, MessageSquare, LifeBuoy, User } from "lucide-react";
+import { LayoutDashboard, FolderOpen, FileText, LifeBuoy, MessageSquare, LogOut } from "lucide-react";
 import GlobalCommandPalette from "@/components/GlobalCommandPalette";
 import { ToastProvider } from "@/components/Toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import { siteConfig } from "@/lib/config";
+import MobileBottomNav from "@/components/MobileBottomNav";
+import ClientHeaderActions from "@/components/ClientHeaderActions";
+import ClientSidebarUser from "@/components/ClientSidebarUser";
+import ThemeAccentProvider from "@/components/ThemeAccentProvider";
+
+const sidebarItems = [
+  { href: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/client/projects", label: "Projects", icon: FolderOpen },
+  { href: "/client/invoices", label: "Invoices", icon: FileText },
+  { href: "/client/support", label: "Support", icon: LifeBuoy },
+  { href: "/forum", label: "Community", icon: MessageSquare },
+];
 
 export default async function ClientLayout({
   children,
@@ -26,47 +38,27 @@ export default async function ClientLayout({
 
   return (
     <ToastProvider>
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <div className="fixed inset-0 noise-overlay pointer-events-none z-0" />
-      <header className="border-b border-white/10 relative z-10 bg-slate-950/80 backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-base md:text-lg font-bold gradient-text shrink-0">
-            <img src={siteConfig.headshot} alt="Hayden Ford" className="w-6 h-6 rounded-full object-cover ring-1 ring-white/20" />
-            Hayden<span className="text-blue-400">.</span>Ford
+    <ThemeAccentProvider />
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-[#07070a] to-slate-950 flex flex-col">
+      {/* Premium ambient background */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-1/4 -left-32 w-[400px] h-[400px] rounded-full bg-blue-500/3 blur-[120px]" />
+        <div className="absolute bottom-1/4 -right-32 w-[400px] h-[400px] rounded-full bg-purple-500/3 blur-[120px]" />
+        <div className="noise-overlay" />
+      </div>
+
+      {/* Compact header */}
+      <header className="relative z-20 border-b border-white/[0.04] bg-[#07070a]/70 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-4 md:px-6 h-12">
+          <Link href="/" className="flex items-center gap-2 text-sm font-bold shrink-0 group">
+            <img src={siteConfig.headshot} alt="Hayden Ford" className="w-6 h-6 rounded-full object-cover ring-2 ring-white/10 group-hover:ring-[var(--accent)]/30 transition-all" />
+            <span className="gradient-text">Hayden<span className="accent-text">.</span>Ford</span>
           </Link>
-          <nav className="flex items-center gap-3 md:gap-4 text-xs md:text-sm font-space overflow-x-auto hide-scrollbar pb-1 -mb-1">
-            <Link href="/client/dashboard" className="text-slate-400 hover:text-white transition-colors shrink-0 px-0.5">
-              Dashboard
-            </Link>
-            <Link href="/client/projects" className="text-slate-400 hover:text-white transition-colors shrink-0 px-0.5">
-              Projects
-            </Link>
-            <Link href="/client/invoices" className="text-slate-400 hover:text-white transition-colors shrink-0 px-0.5">
-              Invoices
-            </Link>
-            <Link href="/client/support" className="text-slate-400 hover:text-white transition-colors shrink-0 px-0.5">
-              Support
-            </Link>
-            <Link href="/forum" className="text-slate-400 hover:text-white transition-colors shrink-0 px-0.5">
-              Community
-            </Link>
-            <div className="shrink-0">
-              <ThemeToggle />
-            </div>
-            <Link href="/client/profile" className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors ml-1 pl-2 border-l border-white/10 shrink-0">
-              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden ring-1 ring-white/20">
-                {user?.image ? (
-                  <img src={user.image} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-blue-500/20 text-blue-400 font-bold text-[9px] md:text-[10px]">
-                    {(user?.displayName ?? user?.name ?? "U").charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-              {user?.badges?.some((b) => b.badge === "VERIFIED") && (
-                <span className="text-blue-400 text-[9px]">✓</span>
-              )}
-            </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/forum" className="hidden sm:block text-xs px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all font-space">Forum</Link>
+            <a href="/" target="_blank" className="text-xs px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all font-space">View Site</a>
+            <ThemeToggle />
+            <ClientHeaderActions user={user} />
             <form
               action={async () => {
                 "use server";
@@ -75,45 +67,46 @@ export default async function ClientLayout({
             >
               <button
                 type="submit"
-                className="text-slate-500 hover:text-red-400 transition-colors ml-2 shrink-0"
+                className="text-slate-600 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-white/5"
+                title="Sign Out"
               >
-                Sign Out
+                <LogOut size={15} />
               </button>
             </form>
-          </nav>
+          </div>
         </div>
       </header>
-      <main className="max-w-5xl mx-auto px-4 md:px-6 py-8 pb-24 md:pb-8 relative z-10">
-        {children}
-      </main>
 
-      {/* Mobile bottom tab bar — tailored mobile dashboard experience for clients */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[70] bg-[#050505]/95 backdrop-blur-2xl border-t border-white/10 pb-safe">
-        <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2 text-[10px] font-space">
-          <Link href="/client/dashboard" className="flex flex-col items-center gap-0.5 text-slate-400 hover:text-white active:text-blue-400 transition-colors">
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/client/projects" className="flex flex-col items-center gap-0.5 text-slate-400 hover:text-white active:text-blue-400 transition-colors">
-            <FolderOpen size={18} />
-            <span>Projects</span>
-          </Link>
-          <Link href="/forum" className="flex flex-col items-center gap-0.5 text-slate-400 hover:text-white active:text-blue-400 transition-colors">
-            <MessageSquare size={18} />
-            <span>Community</span>
-          </Link>
-          <Link href="/client/support" className="flex flex-col items-center gap-0.5 text-slate-400 hover:text-white active:text-blue-400 transition-colors">
-            <LifeBuoy size={18} />
-            <span>Support</span>
-          </Link>
-          <Link href="/client/profile" className="flex flex-col items-center gap-0.5 text-slate-400 hover:text-white active:text-blue-400 transition-colors">
-            <User size={18} />
-            <span>Profile</span>
-          </Link>
-        </div>
-      </nav>
+      {/* Main container - full width, no max-w/mx-auto to prevent sidebar gap */}
+      <div className="flex flex-1 relative z-10">
+        {/* Desktop sidebar - edge to edge */}
+        <aside className="hidden lg:flex w-56 shrink-0 border-r border-white/[0.04] bg-[#07070a]/40 backdrop-blur-sm flex-col">
+          <nav className="p-5 flex-1 space-y-0.5">
+            {sidebarItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.03] transition-all duration-200 text-sm font-space"
+                >
+                  <Icon size={16} className="text-slate-500 group-hover:accent-text transition-colors" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="border-t border-white/[0.04] p-3">
+            <ClientSidebarUser user={user} />
+          </div>
+        </aside>
 
-      {/* Global Cmd/Ctrl+K command palette - fluent navigation on mobile + desktop */}
+        <main className="flex-1 min-w-0 px-4 md:px-6 py-6 md:py-8 pb-24 md:pb-8 lg:overflow-y-auto premium-scrollbar">
+          {children}
+        </main>
+      </div>
+
+      <MobileBottomNav />
       <GlobalCommandPalette />
     </div>
     </ToastProvider>

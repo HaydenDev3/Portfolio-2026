@@ -143,13 +143,13 @@ export default function Process() {
       });
 
       tl.fromTo(
-        headingRef.current?.querySelectorAll(".reveal"),
+        headingRef.current?.querySelectorAll(".reveal") as any,
         { y: 30, opacity: 0 },
         { y: 0, opacity: 1, stagger: 0.12, duration: 0.7, ease: "power3.out" }
       );
 
       tl.fromTo(
-        cardsRef.current?.querySelectorAll(".step-card"),
+        cardsRef.current?.querySelectorAll(".step-card") as any,
         { y: 50, opacity: 0 },
         {
           y: 0,

@@ -52,6 +52,9 @@ export default function ThankYouPage() {
           <p className="text-slate-400">
             Thank you for your purchase. Your project is now in the queue.
           </p>
+          <p className="text-sm text-slate-400 mt-2">
+            A client portal account has been created for you. Login details (temporary password) have been sent to your email — check spam if you don&apos;t see it within a few minutes.
+          </p>
         </div>
 
         <div className="glass p-6 rounded-xl border border-white/10 text-left mb-6 anim-up">

@@ -24,7 +24,7 @@ export const siteConfig = {
     process.env.NEXT_PUBLIC_SHARE_TEXT ||
     `Check out ${process.env.NEXT_PUBLIC_SITE_NAME || "this developer"} — ${process.env.NEXT_PUBLIC_TAGLINE || "Web Developer"} 👋`,
   ogImage: "/og-image.png",
-  headshot: "/portrait.png",  // Professional headshot featured in Story section; used for nav branding and user profile previews
+  headshot: "/portrait.webp",
   keywords: [
     process.env.NEXT_PUBLIC_SITE_NAME || "developer",
     "web developer",

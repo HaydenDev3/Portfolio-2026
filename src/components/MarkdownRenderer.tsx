@@ -7,9 +7,10 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface MarkdownRendererProps {
   content: string;
+  onImageClick?: (src: string) => void;
 }
 
-export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
+export default function MarkdownRenderer({ content, onImageClick }: MarkdownRendererProps) {
   return (
     <div className="prose prose-invert max-w-none prose-sm font-space">
       <ReactMarkdown
@@ -96,11 +97,13 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             return <hr className="border-white/10 my-6" />;
           },
           img({ src, alt }) {
+            const imgSrc = String(src ?? "");
             return (
               <img
-                src={src}
+                src={imgSrc}
                 alt={alt ?? ""}
-                className="rounded-lg max-w-full my-3 border border-white/10"
+                onClick={() => onImageClick?.(imgSrc)}
+                className="rounded-lg max-w-full my-3 border border-white/10 cursor-pointer hover:opacity-90 transition-opacity"
               />
             );
           },

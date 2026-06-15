@@ -8,7 +8,7 @@ if (!key) {
   process.exit(1);
 }
 
-const stripe = new Stripe(key, { apiVersion: "2025-03-31.basil" });
+const stripe = new Stripe(key, { apiVersion: "2026-05-27.dahlia" });
 
 const products = [
   {

@@ -40,12 +40,13 @@ export async function GET(req: Request) {
 
     let orderBy: Record<string, string>[] = [{ isPinned: "desc" }];
     if (sort === "oldest") orderBy.push({ createdAt: "asc" });
+    else if (sort === "replies") orderBy.push({ viewCount: "desc" }); // fallback: replies sort by activity
     else if (sort === "views") orderBy.push({ viewCount: "desc" });
     else orderBy.push({ createdAt: "desc" });
 
     const rawTopics = await prisma.forumTopic.findMany({
       where,
-      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+      orderBy,
       take: limit + 1,
       include: {
         user: { select: { id: true, username: true, displayName: true, image: true, badges: true } },

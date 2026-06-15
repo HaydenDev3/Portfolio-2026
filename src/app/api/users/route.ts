@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { hash } from "bcryptjs";
+import { generateUsername } from "@/lib/username";
+import { generateAvatarDataUrl } from "@/lib/avatar";
 
 export async function GET(req: Request) {
   try {
@@ -86,6 +88,8 @@ export async function POST(req: Request) {
       data: {
         name: name ?? null,
         email,
+        username: await generateUsername(name || email),
+        image: generateAvatarDataUrl(name || email, email),
         hashedPassword,
         role: role ?? "CLIENT",
         phone: phone ?? null,

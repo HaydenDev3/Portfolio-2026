@@ -1,11 +1,13 @@
-import Hero from "@/components/sections/Hero";
-import Story from "@/components/sections/Story";
-import Process from "@/components/sections/Process";
-import FeaturedWork from "@/components/sections/FeaturedWork";
-import Testimonials from "@/components/sections/Testimonials";
-import Services from "@/components/sections/Services";
-import Contact from "@/components/sections/Contact";
+import dynamic from "next/dynamic";
 import Footer from "@/components/Footer";
+
+const Hero = dynamic(() => import("@/components/sections/Hero"), { loading: () => <div className="h-screen bg-[#050505]" /> });
+const Story = dynamic(() => import("@/components/sections/Story"));
+const Process = dynamic(() => import("@/components/sections/Process"));
+const FeaturedWork = dynamic(() => import("@/components/sections/FeaturedWork"));
+const Testimonials = dynamic(() => import("@/components/sections/Testimonials"));
+const Services = dynamic(() => import("@/components/sections/Services"));
+const Contact = dynamic(() => import("@/components/sections/Contact"));
 
 export default function Home() {
   return (

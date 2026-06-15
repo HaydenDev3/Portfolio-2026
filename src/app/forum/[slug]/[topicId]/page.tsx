@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
 import UserProfilePopover from "@/components/UserProfilePopover";
 import ContextMenu, { type ContextMenuAction } from "@/components/ContextMenu";
 import { useContextMenu } from "@/hooks/useContextMenu";
+
+const MarkdownRenderer = dynamic(
+  () => import("@/components/MarkdownRenderer"),
+  { ssr: false }
+);
 import {
-  ArrowUp,
-  ArrowDown,
   MessageSquare,
   Share2,
   Send,
@@ -17,12 +20,14 @@ import {
   Pin,
   Lock,
   MoreHorizontal,
-  Pencil,
   X,
   Check,
+  ArrowUp,
 } from "lucide-react";
 import { VoteButtons } from "@/components/VoteButtons";
 import ForumShareModal from "@/components/ForumShareModal";
+import ImageLightbox from "@/components/ImageLightbox";
+import ForumToolbar from "@/components/ForumToolbar";
 
 const BADGE_COLORS: Record<string, string> = {
   ADMIN: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -55,6 +60,10 @@ export default function TopicPage({
   const [editContent, setEditContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
   const { menu: ctxMenu, show: showCtx, hide: hideCtx } = useContextMenu();
 
   async function fetchTopic() {
@@ -173,6 +182,36 @@ export default function TopicPage({
     setEditingId(null);
     setEditTitle("");
     setEditContent("");
+  }
+
+  function handleImageClick(src: string, allImages: string[]) {
+    const idx = allImages.indexOf(src);
+    setLightboxImages(allImages);
+    setLightboxIndex(idx >= 0 ? idx : 0);
+    setLightboxSrc(src);
+  }
+
+  function extractImages(content: string): string[] {
+    const regex = /!\[.*?\]\((.+?)\)/g;
+    const urls: string[] = [];
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      urls.push(match[1]);
+    }
+    return urls;
+  }
+
+  function handleToolbarInsert(before: string, after = "", placeholder = "") {
+    const ta = replyRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = reply.substring(start, end) || placeholder;
+    setReply(reply.slice(0, start) + before + selected + after + reply.slice(end));
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + before.length;
+    });
   }
 
   async function saveEdit(msgId: string, isTopic: boolean) {
@@ -403,7 +442,10 @@ export default function TopicPage({
                     </div>
                   ) : (
                     <div className="text-[13.5px] text-slate-200 leading-relaxed font-space">
-                      <MarkdownRenderer content={msg.content} />
+                      <MarkdownRenderer
+                        content={msg.content}
+                        onImageClick={(src) => handleImageClick(src, extractImages(msg.content))}
+                      />
                     </div>
                   )}
 
@@ -448,7 +490,9 @@ export default function TopicPage({
           </div>
         ) : (
           <form onSubmit={submitReply} className="glass rounded-2xl border border-white/10 p-4">
+            <ForumToolbar textareaRef={replyRef} onInsert={handleToolbarInsert} />
             <textarea
+              ref={replyRef}
               id="reply-area"
               value={reply}
               onChange={(e) => setReply(e.target.value)}
@@ -553,6 +597,25 @@ export default function TopicPage({
       )}
 
       {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={hideCtx} />}
+
+      {lightboxSrc && (
+        <ImageLightbox
+          src={lightboxSrc}
+          onClose={() => setLightboxSrc(null)}
+          onNext={() => {
+            const next = (lightboxIndex + 1) % lightboxImages.length;
+            setLightboxIndex(next);
+            setLightboxSrc(lightboxImages[next]);
+          }}
+          onPrev={() => {
+            const prev = (lightboxIndex - 1 + lightboxImages.length) % lightboxImages.length;
+            setLightboxIndex(prev);
+            setLightboxSrc(lightboxImages[prev]);
+          }}
+          hasNext={lightboxImages.length > 1}
+          hasPrev={lightboxImages.length > 1}
+        />
+      )}
     </div>
   );
 }

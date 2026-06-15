@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getEffectiveUser } from "@/lib/impersonate";
+import { sendNewTicketNotification, sendAdminNotification } from "@/lib/email";
 
 export async function GET(req: Request) {
   try {
@@ -142,6 +143,47 @@ export async function POST(req: Request) {
     const ticket = await prisma.supportTicket.create({
       data: createData,
     });
+
+    // Send emails (non-blocking in spirit — we await but errors are logged)
+    try {
+      // Notify the client that their ticket was received
+      const clientEmail = sessionForEmail?.user?.email;
+      if (clientEmail) {
+        await sendNewTicketNotification({
+          to: clientEmail,
+          subject: ticket.subject,
+          message: ticket.message,
+          ticketId: ticket.id,
+          isAdminNotification: false,
+        });
+      }
+
+      // Notify admin(s)
+      const adminTarget = process.env.AUTH_ADMIN_EMAIL || process.env.NEXT_PUBLIC_EMAIL;
+      if (adminTarget) {
+        const clientName =
+          (await prisma.user.findUnique({ where: { id: effectiveUserId || "" } }))?.name ||
+          sessionForEmail?.user?.email;
+
+        await sendNewTicketNotification({
+          to: adminTarget,
+          subject: ticket.subject,
+          message: ticket.message,
+          ticketId: ticket.id,
+          clientName: clientName || undefined,
+          isAdminNotification: true,
+        });
+      }
+
+      // Generic admin notification for dashboard overview
+      await sendAdminNotification({
+        subject: "New Support Ticket",
+        message: `New ticket from ${sessionForEmail?.user?.email || "a client"}: ${ticket.subject}`,
+        details: { id: ticket.id, subject: ticket.subject },
+      });
+    } catch (e) {
+      console.error("[TICKETS] Failed to send ticket notification email(s):", e);
+    }
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (error: any) {

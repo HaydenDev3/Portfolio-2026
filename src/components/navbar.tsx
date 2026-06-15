@@ -4,7 +4,6 @@ import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { gsap } from "gsap";
 import {
   Home,
   Briefcase,
@@ -53,7 +52,7 @@ export default function Navbar() {
       .then((data) => {
         if (data?.user) setSessionUser(data.user);
       })
-      .catch(() => {});
+      .catch((e) => console.error("Failed to fetch session:", e));
   }, []);
 
   useEffect(() => {
@@ -72,11 +71,13 @@ export default function Navbar() {
 
   useEffect(() => {
     if (hidden || !navRef.current) return;
-    gsap.fromTo(
-      navRef.current,
-      { y: -16, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.5, ease: "power3.out", delay: 0.15 }
-    );
+    import("gsap").then(({ default: gsap }) => {
+      gsap.fromTo(
+        navRef.current,
+        { y: -16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, ease: "power3.out", delay: 0.15 }
+      );
+    });
   }, [hidden]);
 
   useEffect(() => {
@@ -98,7 +99,7 @@ export default function Navbar() {
 
   if (hidden) return null;
 
-  const brandHtml = siteConfig.nameShort.replace(".", "<span class=\"text-blue-500\">.</span>");
+  const brandHtml = siteConfig.nameShort.replace(".", "<span class=\"accent-text\">.</span>");
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     if (href.startsWith("/#")) return pathname === "/";
@@ -162,39 +163,41 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile bottom nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
-        {/* Book a Call pill */}
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2">
-          <a
-            href="/#contact"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-600/15 border border-blue-500/25 text-[10px] text-blue-400 hover:text-blue-300 hover:bg-blue-600/25 transition-all whitespace-nowrap"
-          >
-            <Calendar size={10} />
-            Book a Call
-          </a>
-        </div>
+      {/* Mobile bottom nav - premium redesign */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-safe">
+        <div className="relative bg-[#050505]/90 backdrop-blur-3xl border-t border-white/[0.04] shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
+          {/* Book a Call pill - floating above */}
+          <div className="absolute -top-11 left-1/2 -translate-x-1/2 z-10">
+            <a
+              href="/#contact"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full accent-bg-subtle accent-border-subtle text-[10px] accent-text hover:opacity-80 transition-all whitespace-nowrap shadow-lg"
+            >
+              <Calendar size={10} />
+              Book a Call
+            </a>
+          </div>
 
-        <div className="relative bg-[#050505]/95 backdrop-blur-2xl border-t border-white/[0.06] h-16 pb-2 pt-1">
-          {/* Center Home button (elevated) */}
-          <a
-            href="/"
-            className={`absolute -top-4 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg ${
-              pathname === "/"
-                ? "bg-blue-600 text-white shadow-blue-500/30"
-                : "bg-blue-600/80 text-white/90 hover:bg-blue-600 shadow-black/20"
-            }`}
-          >
-            <Home size={20} />
-          </a>
+          <div className="flex items-center justify-around h-[68px] max-w-lg mx-auto px-4">
+            {/* Center Home button - elevated */}
+            <a
+              href="/"
+              className={`absolute left-1/2 -translate-x-1/2 -top-5 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-85 shadow-xl ${
+                pathname === "/"
+                  ? "bg-[var(--accent)] text-white shadow-[var(--accent)]/30"
+                  : "accent-bg-medium text-white/95 hover:opacity-90 shadow-black/30"
+              }`}
+            >
+              <Home size={18} strokeWidth={2.5} />
+              <span className="absolute -bottom-3.5 text-[8px] font-medium text-slate-400 whitespace-nowrap">
+                Home
+              </span>
+            </a>
 
-          {/* Nav items row */}
-          <div className="flex items-center justify-around h-full max-w-lg mx-auto px-4">
             {isLoggedIn ? (
               <>
                 <BottomNavItem href="/forum" icon={MessageSquare} label="Forum" isActive={isActive("/forum")} />
                 <BottomNavItem href={dashboardHref} icon={LayoutDashboard} label="Dashboard" isActive={isActive("/dashboard") || isActive("/client")} />
-                <div className="w-12" />
+                <div className="w-11" />
                 <BottomNavItem href="/forum/new" icon={Plus} label="New Post" isActive={isActive("/forum/new")} />
                 <BottomNavProfile user={sessionUser!} />
               </>
@@ -202,11 +205,16 @@ export default function Navbar() {
               <>
                 <BottomNavItem href="/#work" icon={Briefcase} label="Work" isActive={isActive("/#work")} />
                 <BottomNavItem href="/forum" icon={MessageSquare} label="Forum" isActive={isActive("/forum")} />
-                <div className="w-12" />
+                <div className="w-11" />
                 <BottomNavItem href="/websites" icon={Globe} label="Websites" isActive={isActive("/websites")} />
                 <BottomNavItem href="/auth/login" icon={LogIn} label="Sign In" isActive={isActive("/auth/login")} />
               </>
             )}
+          </div>
+
+          {/* Home indicator for iPhone */}
+          <div className="hidden [@media(hover:none)]:flex justify-center pb-1.5 pt-0.5">
+            <div className="w-8 h-1 rounded-full bg-white/20" />
           </div>
         </div>
       </div>
@@ -221,19 +229,23 @@ function BottomNavItem({
   isActive,
 }: {
   href: string;
-  icon: React.ComponentType<{ size?: number | string }>;
+  icon: React.ComponentType<{ size?: number | string; strokeWidth?: number }>;
   label: string;
   isActive: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={`flex flex-col items-center gap-0.5 transition-colors ${
-        isActive ? "text-blue-400" : "text-zinc-500 hover:text-zinc-300"
+      className={`flex flex-col items-center gap-0.5 transition-all duration-200 active:scale-85 ${
+        isActive ? "text-[var(--accent,#3b82f6)]" : "text-zinc-500 hover:text-zinc-300"
       }`}
     >
-      <Icon size={20} />
-      <span className="text-[9px] font-space font-medium">{label}</span>
+      <div className={`transition-transform duration-200 ${isActive ? "scale-110" : ""}`}>
+        <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
+      </div>
+      <span className={`text-[9px] font-space font-medium transition-all duration-200 ${
+        isActive ? "font-semibold tracking-[-0.1px]" : ""
+      }`}>{label}</span>
     </Link>
   );
 }
@@ -267,10 +279,10 @@ function BottomNavProfile({ user }: { user: SessionUser }) {
     <div className="relative">
       <Link
         href={profileHref}
-        className="flex flex-col items-center gap-0.5 transition-colors text-zinc-500 hover:text-zinc-300 active:text-blue-400"
+        className="flex flex-col items-center gap-0.5 transition-all duration-200 active:scale-85 text-zinc-500 hover:text-zinc-300"
         onClick={() => setOpen(false)}
       >
-        <div className="w-5 h-5 rounded-full overflow-hidden ring-1 ring-white/20">
+        <div className="w-5 h-5 rounded-full overflow-hidden ring-1 ring-white/20 transition-transform duration-200">
           {user.image ? (
             <img src={user.image} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -282,7 +294,6 @@ function BottomNavProfile({ user }: { user: SessionUser }) {
         <span className="text-[9px] font-space font-medium">Profile</span>
       </Link>
 
-      {/* Optional long-press / tap menu for power users — still available on tap of avatar area if needed */}
       <button
         ref={btnRef}
         onClick={() => setOpen(!open)}
@@ -292,26 +303,28 @@ function BottomNavProfile({ user }: { user: SessionUser }) {
       {open && (
         <div
           ref={menuRef}
-          className="absolute bottom-full right-0 mb-2 w-40 glass rounded-xl border border-white/10 overflow-hidden shadow-xl z-50"
+          className="absolute bottom-full right-0 mb-2 w-44 glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-50"
         >
-          <div className="px-4 py-2.5 border-b border-white/10">
-            <p className="text-xs font-semibold text-white font-space truncate">
+          <div className="px-4 py-3 border-b border-white/10">
+            <p className="text-sm font-semibold text-white font-space truncate">
               {user.name ?? user.email}
             </p>
-            <p className="text-[9px] text-slate-600 font-space">{user.role}</p>
+            <p className="text-[10px] text-slate-500 font-space">{user.role}</p>
           </div>
-          <Link href={dashboardHref} onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-all font-space">
-            <LayoutDashboard size={12} /> Dashboard
-          </Link>
-          <Link href="/forum" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/5 transition-all font-space">
-            <MessageSquare size={12} /> Forum
-          </Link>
-          <Link href={profileHref} onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-all font-space">
-            Edit Profile
-          </Link>
-          <div className="border-t border-white/10">
-            <button onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-all font-space text-left">
-              ← Sign Out
+          <div className="p-1.5">
+            <Link href={dashboardHref} onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all font-space">
+              <LayoutDashboard size={14} /> Dashboard
+            </Link>
+            <Link href="/forum" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all font-space">
+              <MessageSquare size={14} /> Forum
+            </Link>
+            <Link href={profileHref} onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 rounded-xl transition-all font-space">
+              Edit Profile
+            </Link>
+          </div>
+          <div className="border-t border-white/10 p-1.5">
+            <button onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-red-400 hover:bg-red-500/10 rounded-xl transition-all font-space text-left">
+              Sign Out
             </button>
           </div>
         </div>

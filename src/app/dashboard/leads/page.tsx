@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, Briefcase, MessageSquare, Search, Filter, Edit2 } from "lucide-react";
+import { User, Mail, Briefcase, MessageSquare, Search, Filter, Edit2, Download } from "lucide-react";
 import InfiniteScroll from "@/components/InfiniteScroll";
 import { useToast } from "@/components/Toast";
 
@@ -126,8 +126,14 @@ export default function LeadsPage() {
               Incoming inquiries from the contact form
             </p>
           </div>
-          <div className="text-xs px-3 py-1.5 rounded-full glass border border-white/10 text-slate-400 font-space hidden sm:block">
-            {leads.length} total leads
+          <div className="flex items-center gap-2">
+            <a href="/api/export/leads" target="_blank"
+              className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition-all font-space hidden sm:inline-flex items-center gap-1">
+              <Download size={12} /> Export CSV
+            </a>
+            <div className="text-xs px-3 py-1.5 rounded-full glass border border-white/10 text-slate-400 font-space hidden sm:block">
+              {leads.length} total leads
+          </div>
           </div>
         </div>
 

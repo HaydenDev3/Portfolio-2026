@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { broadcastNewMessage } from "../stream/route";
 import { getEffectiveUser } from "@/lib/impersonate";
+import { sendTicketReplyNotification } from "@/lib/email";
 
 export async function POST(
   req: Request,
@@ -26,7 +27,7 @@ export async function POST(
 
     const ticket = await prisma.supportTicket.findUnique({
       where: { id },
-      select: { id: true, clientId: true },
+      select: { id: true, clientId: true, clientUserId: true },
     });
 
     if (!ticket) {
@@ -66,6 +67,39 @@ export async function POST(
     try {
       broadcastNewMessage(id, message);
     } catch {}
+
+    // Email the other party (client <-> support)
+    try {
+      const ticketFull = await prisma.supportTicket.findUnique({
+        where: { id },
+        include: {
+          client: { select: { email: true, name: true } },
+          clientUser: { select: { email: true, name: true } },
+          assignedStaff: { select: { email: true, name: true } },
+        },
+      });
+
+      if (ticketFull) {
+        const posterIsStaff = message.user.role === "ADMIN";
+        const recipientEmail = posterIsStaff
+          ? (ticketFull.clientUser?.email || ticketFull.client?.email)
+          : (ticketFull.assignedStaff?.email || process.env.AUTH_ADMIN_EMAIL);
+
+        if (recipientEmail && recipientEmail !== session.user.email) {
+          const senderName = message.user.name || "Support";
+          await sendTicketReplyNotification({
+            to: recipientEmail,
+            ticketSubject: (await prisma.supportTicket.findUnique({ where: { id } }))?.subject || "Support Ticket",
+            ticketId: id,
+            senderName,
+            message: content.trim(),
+            isReplyFromStaff: posterIsStaff,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[TICKETS] Failed to send message reply email:", e);
+    }
 
     return NextResponse.json(message, { status: 201 });
   } catch (error) {

@@ -25,7 +25,7 @@ export default function AuthNavItem() {
       .then((data) => {
         if (data?.user) setUser(data.user);
       })
-      .catch(() => {})
+      .catch((e) => console.error("Failed to fetch session:", e))
       .finally(() => setLoading(false));
   }, []);
 

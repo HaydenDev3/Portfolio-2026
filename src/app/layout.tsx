@@ -1,13 +1,20 @@
 import "./globals.css";
-import "@fontsource/space-grotesk";
+import "@fontsource/space-grotesk/400.css";
+import "@fontsource/space-grotesk/500.css";
+import "@fontsource/space-grotesk/600.css";
+import "@fontsource/space-grotesk/700.css";
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/navbar";
-import SmoothScroll from "@/components/providers/SmoothScroll";
 import CursorFollower from "@/components/effects/CursorFollower";
-import ParticleField from "@/components/effects/ParticleField";
+import ThemeAccentProvider from "@/components/ThemeAccentProvider";
 import GradientOrb from "@/components/effects/GradientOrb";
-import ShareButton from "@/components/ShareButton";
 import LiveBadge from "@/components/LiveBadge";
+
+const ShareButton = dynamic(() => import("@/components/ShareButton"));
+
+const SmoothScroll = dynamic(() => import("@/components/providers/SmoothScroll"));
+const ParticleField = dynamic(() => import("@/components/effects/ParticleField"));
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { siteConfig } from "@/lib/config";
@@ -20,22 +27,10 @@ export const metadata: Metadata = {
     default: siteConfig.title,
     template: `%s | ${siteConfig.name}`,
   },
-  icons: {
-    // Custom favicon using the professional headshot from the Story section (synced via siteConfig.headshot).
-    // PNG works great for modern browsers. For best results, use a square-cropped version of your headshot.
-    icon: [
-      { url: siteConfig.headshot, sizes: '16x16', type: 'image/png' },
-      { url: siteConfig.headshot, sizes: '32x32', type: 'image/png' },
-      { url: siteConfig.headshot, sizes: '192x192', type: 'image/png' },
-      { url: siteConfig.headshot, sizes: '512x512', type: 'image/png' },
-    ],
-    shortcut: siteConfig.headshot,
-    apple: {
-      url: siteConfig.headshot,
-      sizes: '180x180',
-      type: 'image/png',
+    icons: {
+      icon: [{ url: "/favicon.ico", sizes: "32x32" }],
+      apple: [],
     },
-  },
   description: siteConfig.description,
   openGraph: {
     title: siteConfig.title,
@@ -199,29 +194,29 @@ const schemas = [
             "@type": "Service",
             name: "Essential Website Package",
             description: "1-3 page website for small businesses",
+          },
           price: "300",
           priceCurrency: "AUD",
         },
-      },
-      {
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Service",
-          name: "Growth Website Package",
-          description: "Up to 6 page website with custom design",
+        {
+          "@type": "Offer",
+          itemOffered: {
+            "@type": "Service",
+            name: "Growth Website Package",
+            description: "Up to 6 page website with custom design",
+          },
           price: "600",
           priceCurrency: "AUD",
         },
-      },
-      {
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Service",
-          name: "Premium Website Package",
-          description: "Full-service build with advanced SEO",
-          price: "1200",
-            priceCurrency: "AUD",
+        {
+          "@type": "Offer",
+          itemOffered: {
+            "@type": "Service",
+            name: "Premium Website Package",
+            description: "Full-service build with advanced SEO",
           },
+          price: "1200",
+          priceCurrency: "AUD",
         },
       ],
     },
@@ -331,6 +326,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ShareButton />
         <Analytics />
         <SpeedInsights />
+        <ThemeAccentProvider />
       </body>
     </html>
   );

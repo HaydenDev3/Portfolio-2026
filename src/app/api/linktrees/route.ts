@@ -13,7 +13,7 @@ export async function GET() {
     // Use effective user (supports impersonation)
     const user = effectiveUser || (await prisma.user.findUnique({
       where: { id: effectiveUserId },
-      select: { id: true, role: true, linktrees: true },
+      include: { linktrees: true },
     }));
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });

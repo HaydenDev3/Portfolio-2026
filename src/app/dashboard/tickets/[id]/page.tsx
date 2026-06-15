@@ -1,7 +1,21 @@
 "use client";
 
-import { useState, useEffect, use, useRef, useMemo } from "react";
-import { Clock } from "lucide-react";
+import { useState, useEffect, use, useRef, useMemo, useCallback } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Clock,
+  Send,
+  Paperclip,
+  Check,
+  CheckCheck,
+  ArrowDown,
+  MoreHorizontal,
+  X,
+  User,
+  Shield,
+  AlertTriangle,
+} from "lucide-react";
 import { useToast } from "@/components/Toast";
 
 interface UserInfo {
@@ -14,6 +28,7 @@ interface UserInfo {
 interface Message {
   id: string;
   content: string;
+  fileUrl: string | null;
   createdAt: string;
   user: UserInfo;
 }
@@ -29,6 +44,39 @@ interface Ticket {
   assignedStaff?: { id: string; name: string | null; displayName: string | null; email: string; image: string | null } | null;
   messages: Message[];
   createdAt: string;
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  OPEN: { label: "Open", color: "text-blue-400", bg: "bg-blue-500/10" },
+  IN_PROGRESS: { label: "In Progress", color: "text-amber-400", bg: "bg-amber-500/10" },
+  RESOLVED: { label: "Resolved", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  CLOSED: { label: "Closed", color: "text-slate-400", bg: "bg-slate-500/10" },
+};
+
+const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
+  LOW: { label: "Low", color: "text-slate-500" },
+  MEDIUM: { label: "Medium", color: "text-amber-400" },
+  HIGH: { label: "High", color: "text-orange-400" },
+  URGENT: { label: "Urgent", color: "text-red-400" },
+};
+
+function formatMessageTime(date: string) {
+  return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDateSeparator(date: string) {
+  const d = new Date(date);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+function getInitial(name: string | null | undefined) {
+  return (name || "?").charAt(0).toUpperCase();
 }
 
 export default function TicketDetailPage({
@@ -48,18 +96,18 @@ export default function TicketDetailPage({
   const [replyContent, setReplyContent] = useState("");
   const [sending, setSending] = useState(false);
   const [liveConnected, setLiveConnected] = useState(false);
-
-  // Typing indicator state for a beautiful fluent chat experience
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showManagement, setShowManagement] = useState(false);
+  const [replyFile, setReplyFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [typingUser, setTypingUser] = useState<{ name: string; role: string } | null>(null);
   const [selfUserId, setSelfUserId] = useState<string | null>(null);
+
   const typingTimeoutRef = useRef<any>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Role-based: admins (non-impersonated) get full ticket management sidebar
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  // Hook must be called unconditionally at the top (before any early returns)
-  // to satisfy React's Rules of Hooks. Safe because it gracefully handles `ticket == null`.
   const uniqueMessages = useMemo(() => {
     const seen = new Set<string>();
     return (ticket?.messages || []).filter((m: any) => {
@@ -69,15 +117,10 @@ export default function TicketDetailPage({
     });
   }, [ticket?.messages]);
 
-  // Note: all other hooks (useState, useRef, useEffect, useMemo) are declared
-  // above, before any conditional returns. This fixes the "Hooks called in different order" error.
-
   async function fetchTicket() {
     const res = await fetch(`/api/tickets/${id}`);
     if (res.ok) {
       const t = await res.json();
-
-      // Normalize messages to guarantee unique ids (defensive against any race or bad data)
       if (t.messages && Array.isArray(t.messages)) {
         const seen = new Set<string>();
         t.messages = t.messages.filter((m: any) => {
@@ -86,7 +129,6 @@ export default function TicketDetailPage({
           return true;
         });
       }
-
       setTicket(t);
       setStatus(t.status);
       setPriority(t.priority);
@@ -94,12 +136,9 @@ export default function TicketDetailPage({
       setAssignedStaffId(t.assignedStaff?.id || "");
     }
     setLoading(false);
-
-    // Scroll chat into view once loaded for a fluent first impression
-    setTimeout(() => scrollMessagesToBottom(false), 120);
+    setTimeout(() => scrollToBottom(false), 120);
   }
 
-  // Load available support staff (admins) for the assignment picker (admin only section)
   async function loadAvailableStaff() {
     try {
       const res = await fetch("/api/users");
@@ -110,34 +149,32 @@ export default function TicketDetailPage({
     } catch {}
   }
 
-  // Smooth auto-scroll helper for fluent chat
-  function scrollMessagesToBottom(smooth = true) {
+  const scrollToBottom = useCallback((smooth = true) => {
     const el = messagesScrollRef.current;
     if (!el) return;
-    el.scrollTo({
-      top: el.scrollHeight,
-      behavior: smooth ? "smooth" : "auto",
-    });
-  }
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  }, []);
 
-  // Notify the other party that we are actively typing (debounced on client)
-  const notifyTyping = async (isTyping: boolean) => {
+  const handleScroll = useCallback(() => {
+    const el = messagesScrollRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    setShowScrollBtn(!isNearBottom);
+  }, []);
+
+  const notifyTyping = useCallback(async (isTyping: boolean) => {
     try {
       await fetch(`/api/tickets/${id}/typing`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isTyping }),
       });
-    } catch {
-      // silent fail - typing is a nice-to-have, not critical
-    }
-  };
+    } catch {}
+  }, [id]);
 
   useEffect(() => {
     fetchTicket();
     loadAvailableStaff();
-
-    // Fetch self id so we can ignore our own typing events
     fetch("/api/user/profile")
       .then((r) => (r.ok ? r.json() : null))
       .then((p) => p?.id && setSelfUserId(p.id))
@@ -145,7 +182,6 @@ export default function TicketDetailPage({
   }, [id]);
 
   useEffect(() => {
-    // Role check for management features (full admin vs client/impersonated view)
     async function checkRole() {
       try {
         const res = await fetch('/api/user/profile');
@@ -159,7 +195,6 @@ export default function TicketDetailPage({
     checkRole();
   }, []);
 
-  // Live updates via SSE (real-time chat without polling) + typing indicators
   useEffect(() => {
     if (!id) return;
     let es: EventSource | null = null;
@@ -168,52 +203,38 @@ export default function TicketDetailPage({
       es.onopen = () => setLiveConnected(true);
       es.onerror = () => setLiveConnected(false);
 
-      // Handle new messages
       es.addEventListener("message", (ev) => {
         try {
           const data = JSON.parse(ev.data);
           if (data && data.id && data.content) {
-            // incoming new message from the other party
             setTicket((prev) => {
               if (!prev) return prev;
-              // Robust dedupe: remove any previous entry with this id (handles optimistic temp vs real race)
-              // then append the canonical message. This prevents duplicate keys.
               const withoutDup = prev.messages.filter((m) => m.id !== data.id);
-              const updated = { ...prev, messages: [...withoutDup, data as Message] };
-              // Auto-scroll to bottom on new message for fluent experience
-              setTimeout(() => scrollMessagesToBottom(), 50);
-              return updated;
+              return { ...prev, messages: [...withoutDup, data as Message] };
             });
-            // Clear any active typing indicator when a real message arrives
             setTypingUser(null);
             if (typingTimeoutRef.current) {
               clearTimeout(typingTimeoutRef.current);
               typingTimeoutRef.current = null;
             }
+            setTimeout(() => scrollToBottom(), 50);
           }
         } catch {}
       });
 
-      // NEW: Beautiful active typing indicators
       es.addEventListener("typing", (ev) => {
         try {
           const data = JSON.parse(ev.data);
           if (data && typeof data.isTyping === "boolean" && data.user) {
-            // Ignore our own typing events
             if (data.user.id && selfUserId && data.user.id === selfUserId) return;
-
             if (data.isTyping) {
               setTypingUser({
-                name: data.user.name || "The other party",
+                name: data.user.name || "Support",
                 role: data.user.role || "",
               });
-              // Auto-clear after inactivity (server or client will also stop)
               if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-              typingTimeoutRef.current = setTimeout(() => {
-                setTypingUser(null);
-              }, 4500);
-              // Scroll a little so the indicator is visible
-              setTimeout(() => scrollMessagesToBottom(true), 30);
+              typingTimeoutRef.current = setTimeout(() => setTypingUser(null), 4500);
+              setTimeout(() => scrollToBottom(true), 30);
             } else {
               setTypingUser(null);
             }
@@ -224,13 +245,87 @@ export default function TicketDetailPage({
       setLiveConnected(false);
     }
     return () => {
-      if (es) {
-        es.close();
-      }
+      if (es) es.close();
       setLiveConnected(false);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
-  }, [id, selfUserId]);
+  }, [id, selfUserId, scrollToBottom]);
+
+  async function uploadFile(file: File): Promise<string | null> {
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    setUploading(false);
+    if (res.ok) {
+      const { url } = await res.json();
+      return url;
+    }
+    return null;
+  }
+
+  async function sendReply() {
+    if ((!replyContent.trim() && !replyFile) || sending || !ticket) return;
+    setSending(true);
+
+    let fileUrl: string | null = null;
+    if (replyFile) {
+      fileUrl = await uploadFile(replyFile);
+      if (!fileUrl) {
+        setSending(false);
+        return;
+      }
+    }
+
+    const content = replyContent.trim();
+    setReplyContent("");
+    setReplyFile(null);
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = null;
+    notifyTyping(false);
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: tempId,
+      content,
+      fileUrl,
+      createdAt: new Date().toISOString(),
+      user: { id: "", name: "You", image: null, role: isAdmin ? "ADMIN" : "CLIENT" },
+    };
+
+    setTicket((prev) => {
+      if (!prev) return prev as any;
+      const withoutDup = prev.messages.filter((m) => m.id !== tempId);
+      return { ...prev, messages: [...withoutDup, optimisticMessage] };
+    });
+
+    const res = await fetch(`/api/tickets/${id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, fileUrl }),
+    });
+
+    setSending(false);
+
+    if (res.ok) {
+      const realMessage = await res.json();
+      setTicket((prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: prev.messages.filter((m) => m.id !== tempId && m.id !== realMessage.id).concat(realMessage),
+            }
+          : prev
+      );
+      setTimeout(() => scrollToBottom(), 60);
+    } else {
+      setTicket((prev) =>
+        prev ? { ...prev, messages: prev.messages.filter((m) => m.id !== tempId) } : prev
+      );
+      setReplyContent(content);
+      showToast("Failed to send message", "error");
+    }
+  }
 
   function downloadTranscript() {
     if (!ticket) return;
@@ -243,22 +338,12 @@ export default function TicketDetailPage({
     lines.push("=== CONVERSATION ===");
     lines.push("");
 
-    const all = [
-      {
-        type: "original",
-        user: { name: ticket.client.name, role: "CLIENT" },
-        content: ticket.message,
-        createdAt: ticket.createdAt,
-      },
-      ...ticket.messages.map((m) => ({ type: "reply", ...m })),
-    ];
-
-    all.forEach((m: any) => {
+    [ticket, ...ticket.messages].forEach((m: any) => {
       const who = m.user?.name || "Unknown";
       const role = m.user?.role || "";
       const when = new Date(m.createdAt).toLocaleString();
       lines.push(`[${when}] ${role} ${who}:`);
-      lines.push(m.content);
+      lines.push(m.content || m.message);
       lines.push("");
     });
 
@@ -281,333 +366,554 @@ export default function TicketDetailPage({
       body: JSON.stringify({ status, priority, adminNotes, assignedStaffId: assignedStaffId || null }),
     });
     fetchTicket();
+    showToast("Ticket updated", "success");
   }
 
-  async function sendReply() {
-    if (!replyContent.trim() || sending || !ticket) return;
-    const content = replyContent.trim();
-    setReplyContent("");
-    setSending(true);
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-2 border-white/10 border-t-blue-400 rounded-full animate-spin" />
+        <p className="text-sm text-slate-500 font-space">Loading conversation...</p>
+      </div>
+    </div>
+  );
+  if (!ticket) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <p className="text-slate-500 font-space">Ticket not found</p>
+    </div>
+  );
 
-    const tempId = `temp-${Date.now()}`;
-    const optimisticMessage: Message = {
-      id: tempId,
-      content,
-      createdAt: new Date().toISOString(),
-      user: { id: "", name: "You", image: null, role: "ADMIN" },
-    };
+  const statusMeta = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.OPEN;
+  const priorityMeta = PRIORITY_CONFIG[ticket.priority] || PRIORITY_CONFIG.MEDIUM;
 
-    setTicket((prev) => {
-      if (!prev) return prev as any;
-      // Use functional update + dedupe just in case
-      const withoutDup = prev.messages.filter((m) => m.id !== tempId);
-      return {
-        ...prev,
-        messages: [...withoutDup, optimisticMessage],
-      };
-    });
-
-    const res = await fetch(`/api/tickets/${id}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-
-    setSending(false);
-
-    // Stop our own typing indicator immediately
-    clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = null;
-    notifyTyping(false);
-
-    if (res.ok) {
-      const realMessage = await res.json();
-      setTicket((prev) =>
-        prev
-          ? {
-              ...prev,
-              // Replace the optimistic temp, but also filter any other copies of this real id
-              // (in case SSE arrived at the same time) to guarantee unique keys.
-              messages: [
-                ...prev.messages.filter((m) => m.id !== tempId && m.id !== realMessage.id),
-                realMessage,
-              ],
-            }
-          : prev
-      );
-      showToast("Message sent", "success");
-      // Ensure we scroll to our just-sent message
-      setTimeout(() => scrollMessagesToBottom(), 60);
-    } else {
-      setTicket((prev) =>
-        prev
-          ? {
-              ...prev,
-              messages: prev.messages.filter((m) => m.id !== tempId),
-            }
-          : prev
-      );
-      setReplyContent(content);
-      showToast("Failed to send message", "error");
-    }
-  }
-
-  const STATUS_COLORS: Record<string, string> = {
-    OPEN: "bg-blue-500/10 text-blue-400",
-    IN_PROGRESS: "bg-yellow-500/10 text-yellow-400",
-    RESOLVED: "bg-green-500/10 text-green-400",
-    CLOSED: "bg-slate-500/10 text-slate-400",
-  };
-
-  const PRIORITY_COLORS: Record<string, string> = {
-    LOW: "text-slate-500",
-    MEDIUM: "text-yellow-400",
-    HIGH: "text-orange-400",
-    URGENT: "text-red-400",
-  };
-
-  if (loading) return <p className="text-slate-400 font-space">Loading...</p>;
-  if (!ticket)
-    return <p className="text-slate-500 font-space">Ticket not found</p>;
-
-  const allMessages: { type: "original" | "reply"; message: Message }[] = [
+  const allMessages: Message[] = [
     {
-      type: "original",
-      message: {
-        id: "original",
-        content: ticket.message,
-        createdAt: ticket.createdAt,
-        user: {
-          id: ticket.client.id,
-          name: ticket.client.name,
-          image: null,
-          role: "CLIENT",
-        },
-      },
+      id: "original",
+      content: ticket.message,
+      fileUrl: null,
+      createdAt: ticket.createdAt,
+      user: { id: ticket.client.id, name: ticket.client.name, image: null, role: "CLIENT" },
     },
-    ...uniqueMessages.map((m) => ({ type: "reply" as const, message: m })),
+    ...uniqueMessages,
   ];
 
+  // Compute date separators
+  const dateSections: { date: string; messages: Message[] }[] = [];
+  allMessages.forEach((msg) => {
+    const dateKey = new Date(msg.createdAt).toDateString();
+    const last = dateSections[dateSections.length - 1];
+    if (last && last.date === dateKey) {
+      last.messages.push(msg);
+    } else {
+      dateSections.push({ date: dateKey, messages: [msg] });
+    }
+  });
+
   return (
-    <div className="max-w-6xl">
-      {/* Sleek header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <h1 className="text-2xl md:text-3xl font-bold gradient-text font-space tracking-tight truncate">
-              {ticket.subject}
-            </h1>
-            {liveConnected && (
-              <span className="text-[10px] px-3 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-space tracking-wider">LIVE</span>
-            )}
-          </div>
-          {isAdmin && (
-            <p className="text-sm text-slate-500 font-space">
-              {ticket.client.name} &nbsp;·&nbsp; {ticket.client.email}
-            </p>
-          )}
-          {ticket.assignedStaff ? (
-            <p className="text-sm mt-0.5 text-emerald-400 font-space">
-              Assigned to: <span className="font-semibold text-emerald-300">{ticket.assignedStaff.displayName || ticket.assignedStaff.name || ticket.assignedStaff.email}</span>
-            </p>
-          ) : (
-            <p className="text-sm mt-0.5 text-slate-500 font-space">No support staff assigned yet</p>
-          )}
-        </div>
-        <button
-          onClick={downloadTranscript}
-          className="flex items-center gap-2 px-4 py-2 rounded-2xl border border-white/10 hover:bg-white/5 text-sm font-space transition active:scale-95 self-start md:self-auto"
+    <div className="mobile-section max-w-6xl mx-auto">
+      {/* Premium Header */}
+      <div className="mb-4 md:mb-6">
+        <Link
+          href="/dashboard/tickets"
+          className="inline-flex items-center gap-1.5 text-xs md:text-sm text-slate-400 hover:text-white transition-colors font-space group mb-3"
         >
-          <Clock size={15} /> Download Transcript
-        </button>
+          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+          Back to Tickets
+        </Link>
+
+        <div className="premium-glass-strong rounded-2xl md:rounded-3xl p-4 md:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <h1 className="text-lg md:text-2xl font-semibold tracking-[-0.5px] text-white font-space truncate">
+                  {ticket.subject}
+                </h1>
+                {liveConnected && (
+                  <span className="inline-flex items-center gap-1 text-[9px] md:text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-space font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap text-xs">
+                <span className={`text-[10px] md:text-xs px-2.5 py-0.5 rounded-full font-semibold ${statusMeta.bg} ${statusMeta.color}`}>
+                  {statusMeta.label}
+                </span>
+                <span className={`text-[10px] md:text-xs font-medium ${priorityMeta.color}`}>
+                  {priorityMeta.label} priority
+                </span>
+                {ticket.assignedStaff && (
+                  <span className="text-[10px] md:text-xs text-emerald-400 font-space flex items-center gap-1">
+                    <Shield size={10} />
+                    {ticket.assignedStaff.displayName || ticket.assignedStaff.name || ticket.assignedStaff.email}
+                  </span>
+                )}
+                <span className="text-[10px] md:text-xs text-slate-600 font-space flex items-center gap-1">
+                  <Clock size={10} />
+                  {new Date(ticket.createdAt).toLocaleDateString("en-AU", { month: "short", day: "numeric" })}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={downloadTranscript}
+                className="hidden md:inline-flex items-center gap-1.5 text-[10px] md:text-xs px-3 py-2 rounded-xl premium-glass text-slate-300 hover:text-white hover:border-white/15 transition-all font-space"
+              >
+                <Clock size={12} /> Transcript
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowManagement(!showManagement)}
+                  className={`md:hidden inline-flex items-center gap-1.5 p-2 rounded-xl transition-all ${
+                    showManagement ? "bg-accent-bg-subtle text-[var(--accent)]" : "premium-glass text-slate-300 hover:text-white"
+                  }`}
+                >
+                  <MoreHorizontal size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Chat area - modern & fluent. Full width for clients, split for admins with management */}
-        <div className={`${isAdmin ? 'xl:col-span-8' : 'xl:col-span-12'} space-y-4`}>
-          <div ref={messagesScrollRef} className="space-y-4 max-h-[520px] overflow-auto pr-2 custom-scroll">
-            {allMessages.map(({ type, message }) => {
-              const isAdmin = message.user.role === "ADMIN";
-              return (
-                <div
-                  key={message.id}
-                  className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}
-                >
-                  <div className={`max-w-[85%] md:max-w-[75%] ${isAdmin ? "text-right" : ""}`}>
-                    <div className="flex items-center gap-2 mb-1.5 px-1">
-                      {!isAdmin && (
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500/30 to-blue-500/20 flex items-center justify-center text-[10px] font-bold shrink-0 text-emerald-400">
-                          {message.user.name?.[0]?.toUpperCase() || "C"}
-                        </div>
-                      )}
-                      <span className="text-xs font-medium text-white font-space">{message.user.name ?? "Unknown"}</span>
-                      <span className={`text-[9px] px-1.5 py-px rounded font-space ${isAdmin ? "bg-blue-500/10 text-blue-400" : "bg-emerald-500/10 text-emerald-400"}`}>
-                        {message.user.role}
-                      </span>
-                      <span className="text-[10px] text-slate-600 font-space ml-auto">
-                        {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                      {isAdmin && (
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500/30 to-purple-500/20 flex items-center justify-center text-[10px] font-bold shrink-0 text-blue-400">
-                          {message.user.name?.[0]?.toUpperCase() || "A"}
-                        </div>
-                      )}
-                    </div>
+      {/* Main grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-6">
+        {/* Chat Area */}
+        <div className={`${isAdmin ? 'xl:col-span-8' : 'xl:col-span-12'} flex flex-col`}>
+          {/* Messages */}
+          <div
+            ref={messagesScrollRef}
+            onScroll={handleScroll}
+            className="flex-1 space-y-1 max-h-[55vh] md:max-h-[60vh] overflow-y-auto pr-1 md:pr-2 mobile-scroll premium-scrollbar"
+          >
+            {dateSections.map((section) => (
+              <div key={section.date}>
+                {/* Date separator */}
+                <div className="flex items-center gap-3 my-4 md:my-5">
+                  <div className="flex-1 h-px bg-white/[0.04]" />
+                  <span className="text-[10px] md:text-xs text-slate-600 font-space font-medium px-2">
+                    {formatDateSeparator(section.date)}
+                  </span>
+                  <div className="flex-1 h-px bg-white/[0.04]" />
+                </div>
 
+                {section.messages.map((msg, idx) => {
+                  const isMe = msg.id.startsWith("temp-") || 
+                    (msg.user.role === "ADMIN" && isAdmin) || 
+                    (msg.user.role === "CLIENT" && !isAdmin && msg.user.id !== ticket.client.id);
+                  const fromAdmin = msg.user.role === "ADMIN";
+                  const fromClient = msg.user.role === "CLIENT";
+                  const isOriginal = msg.id === "original";
+                  const isPending = msg.id.startsWith("temp-");
+                  const isSending = isPending && sending;
+                  const showAvatar = idx === 0 || section.messages[idx - 1]?.user.id !== msg.user.id;
+
+                  return (
                     <div
-                      className={`glass px-4 py-3 rounded-3xl text-sm text-slate-200 leading-relaxed font-space shadow-inner ${
-                        isAdmin
-                          ? "rounded-tr-none bg-white/[0.04] border border-blue-500/10"
-                          : "rounded-tl-none border border-white/10"
-                      }`}
+                      key={msg.id}
+                      className={`flex gap-2 md:gap-3 px-1 ${isMe ? "justify-end" : "justify-start"} message-enter`}
+                      style={{ animationDelay: `${idx * 30}ms` }}
                     >
-                      {message.content}
+                      {/* Avatar (left side for received) */}
+                      {!isMe && showAvatar && (
+                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shrink-0 mt-1 ${
+                          fromAdmin
+                            ? "bg-gradient-to-br from-blue-500/30 to-purple-500/20 text-blue-400"
+                            : "bg-gradient-to-br from-emerald-500/30 to-blue-500/20 text-emerald-400"
+                        }`}>
+                          {msg.user.image ? (
+                            <img src={msg.user.image} alt="" className="w-full h-full object-cover rounded-full" />
+                          ) : (
+                            getInitial(msg.user.name)
+                          )}
+                        </div>
+                      )}
+                      {!isMe && !showAvatar && <div className="w-7 md:w-8 shrink-0" />}
+
+                      <div className={`max-w-[82%] md:max-w-[72%] ${isMe ? "items-end" : "items-start"} flex flex-col`}>
+                        {/* Name + time */}
+                        {showAvatar && (
+                          <div className={`flex items-center gap-2 mb-1 px-1 ${isMe ? "flex-row-reverse" : ""}`}>
+                            <span className="text-[10px] md:text-xs font-medium text-slate-300 font-space">
+                              {isMe ? "You" : (msg.user.name || "Unknown")}
+                            </span>
+                            <span className="text-[9px] md:text-[10px] text-slate-600 font-space">
+                              {formatMessageTime(msg.createdAt)}
+                            </span>
+                            {isOriginal && (
+                              <span className="text-[8px] md:text-[9px] px-1.5 py-px rounded bg-blue-500/10 text-blue-400 font-space font-medium">
+                                Original
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Bubble */}
+                        <div className={`relative ${
+                          isMe
+                            ? "bg-gradient-to-br from-[var(--accent)] to-[var(--accent-dark,var(--accent))] text-white rounded-2xl rounded-br-md"
+                            : fromAdmin
+                            ? "premium-glass-strong border border-blue-500/10 text-slate-200 rounded-2xl rounded-bl-md"
+                            : "premium-glass-strong border border-white/[0.06] text-slate-200 rounded-2xl rounded-bl-md"
+                        } px-3.5 md:px-4 py-2.5 md:py-3 shadow-sm`}>
+                          <p className="text-xs md:text-sm leading-relaxed font-space whitespace-pre-wrap">
+                            {msg.content}
+                          </p>
+                          {msg.fileUrl && (
+                            <a
+                              href={msg.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center gap-1.5 mt-2 text-[10px] md:text-xs font-medium underline-offset-2 underline ${
+                                isMe ? "text-white/80 hover:text-white" : "text-blue-400 hover:text-blue-300"
+                              }`}
+                            >
+                              <Paperclip size={10} /> View Attachment
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Status indicator */}
+                        {isMe && (
+                          <div className="flex items-center gap-1 mt-0.5 px-1">
+                            {isSending ? (
+                              <span className="text-[9px] text-slate-600 font-space">Sending...</span>
+                            ) : isPending ? (
+                              <Clock size={9} className="text-slate-600" />
+                            ) : (
+                              <CheckCheck size={10} className="text-emerald-400/60" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Avatar (right side for sent) */}
+                      {isMe && showAvatar && (
+                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-[var(--accent)]/30 to-purple-500/20 flex items-center justify-center text-[10px] md:text-xs font-bold shrink-0 mt-1 text-[var(--accent)]">
+                          {getInitial("You")}
+                        </div>
+                      )}
+                      {isMe && !showAvatar && <div className="w-7 md:w-8 shrink-0" />}
                     </div>
+                  );
+                })}
+              </div>
+            ))}
+
+            {/* Typing indicator */}
+            {typingUser && (
+              <div className="flex items-center gap-2.5 px-1 py-2">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500/30 to-purple-500/20 flex items-center justify-center text-[10px] font-bold shrink-0 text-blue-400">
+                  {getInitial(typingUser.name)}
+                </div>
+                <div className="premium-glass-strong rounded-2xl px-4 py-2.5 border border-blue-500/10">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "0s" }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "0.15s" }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "0.3s" }} />
+                    </div>
+                    <span className="text-xs text-slate-400 font-space">{typingUser.name} is typing...</span>
                   </div>
                 </div>
-              );
-            })}
-            {/* Active typing indicator - beautiful, subtle and fluent */}
-            {typingUser && (
-              <div className="flex items-center gap-2 px-2 py-1 text-xs text-slate-400 font-space">
-                <div className="flex gap-1 items-center">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: "-0.32s" }} />
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: "-0.16s" }} />
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-bounce" />
-                </div>
-                <span className="font-medium">{typingUser.name} is typing…</span>
+              </div>
+            )}
+
+            {/* Scroll to bottom FAB */}
+            {showScrollBtn && (
+              <div className="sticky bottom-2 flex justify-center">
+                <button
+                  onClick={() => scrollToBottom()}
+                  className="w-9 h-9 rounded-full premium-glass-strong border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:border-white/20 transition-all shadow-lg backdrop-blur-xl"
+                >
+                  <ArrowDown size={14} />
+                </button>
               </div>
             )}
           </div>
 
-          {/* Reply composer - sleek and fluent with active typing support */}
-          <div className="glass p-4 md:p-5 rounded-2xl border border-white/10">
-            <textarea
-              value={replyContent}
-              onChange={(e) => {
-                setReplyContent(e.target.value);
+          {/* Premium Reply Composer */}
+          <div className="mt-3 md:mt-4 premium-glass-strong rounded-2xl md:rounded-3xl p-3 md:p-4">
+            {/* Attachment preview */}
+            {replyFile && (
+              <div className="flex items-center gap-2.5 mb-3 px-2 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+                <Paperclip size={12} className="text-blue-400" />
+                <span className="flex-1 text-xs text-slate-400 truncate font-space">{replyFile.name}</span>
+                <span className="text-[10px] text-slate-600 font-space">
+                  {(replyFile.size / 1024).toFixed(0)} KB
+                </span>
+                <button
+                  onClick={() => { setReplyFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  className="p-1 rounded-lg text-slate-500 hover:text-red-400 transition"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
 
-                // Active typing indicator - beautiful real-time feedback
-                const val = e.target.value.trim();
-                if (val) {
-                  if (!typingTimeoutRef.current) {
-                    notifyTyping(true);
-                  }
-                  clearTimeout(typingTimeoutRef.current);
-                  typingTimeoutRef.current = setTimeout(() => {
-                    notifyTyping(false);
+            <div className="flex items-end gap-2">
+              <div className="flex-1 relative">
+                <textarea
+                  value={replyContent}
+                  onChange={(e) => {
+                    setReplyContent(e.target.value);
+                    const val = e.target.value.trim();
+                    if (val) {
+                      if (!typingTimeoutRef.current) notifyTyping(true);
+                      clearTimeout(typingTimeoutRef.current);
+                      typingTimeoutRef.current = setTimeout(() => {
+                        notifyTyping(false);
+                        typingTimeoutRef.current = null;
+                      }, 2200);
+                    } else {
+                      clearTimeout(typingTimeoutRef.current);
+                      typingTimeoutRef.current = null;
+                      notifyTyping(false);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendReply();
+                    }
+                  }}
+                  onBlur={() => {
+                    clearTimeout(typingTimeoutRef.current);
                     typingTimeoutRef.current = null;
-                  }, 2200);
-                } else {
-                  clearTimeout(typingTimeoutRef.current);
-                  typingTimeoutRef.current = null;
-                  notifyTyping(false);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendReply();
-                }
-              }}
-              onBlur={() => {
-                clearTimeout(typingTimeoutRef.current);
-                typingTimeoutRef.current = null;
-                notifyTyping(false);
-              }}
-              rows={3}
-              placeholder="Write a reply... (Enter to send)"
-              className="w-full px-4 py-3 rounded-2xl bg-slate-800/50 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none resize-y font-space leading-relaxed"
-            />
-            <div className="flex justify-between items-center mt-3 text-xs">
-              <span className="text-slate-500 font-space">Shift + Enter for new line</span>
-              <button
-                onClick={sendReply}
-                disabled={!replyContent.trim() || sending}
-                className="px-6 py-2 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-medium font-space transition flex items-center gap-2 active:scale-[0.985]"
-              >
-                {sending ? "Sending..." : "Send Reply"}
-              </button>
+                    notifyTyping(false);
+                  }}
+                  rows={2}
+                  placeholder="Type your message..."
+                  className="w-full px-4 py-2.5 md:py-3 rounded-xl bg-white/[0.03] border border-white/10 text-xs md:text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 resize-none font-space leading-relaxed transition-all"
+                />
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0 pb-0.5">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={(e) => setReplyFile(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/5 transition-all disabled:opacity-40"
+                  title="Attach file"
+                >
+                  <Paperclip size={16} />
+                </button>
+                <button
+                  onClick={sendReply}
+                  disabled={(!replyContent.trim() && !replyFile) || sending || uploading}
+                  className="p-2.5 rounded-xl bg-[var(--accent)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all active:scale-95 shadow-lg"
+                >
+                  {uploading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-2 px-1">
+              <span className="text-[9px] md:text-[10px] text-slate-600 font-space">
+                {replyContent.length > 0 && `${replyContent.length} characters · `}Enter to send · Shift+Enter for new line
+              </span>
+              {!liveConnected && (
+                <span className="text-[9px] md:text-[10px] text-slate-600 font-space flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-slate-600" />
+                  Offline
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Management sidebar - only for real admins (role-based ticket management) */}
+        {/* Management sidebar - desktop */}
         {isAdmin && (
-          <div className="xl:col-span-4">
-            <div className="glass p-6 rounded-2xl border border-white/10 sticky top-4 space-y-5">
-            <div>
-              <h3 className="uppercase text-xs tracking-[1.5px] text-slate-500 font-semibold mb-3 font-space">Management</h3>
+          <div className={`${showManagement ? 'block' : 'hidden'} xl:block xl:col-span-4`}>
+            <div className="premium-glass-strong rounded-2xl md:rounded-3xl p-5 md:p-6 sticky top-4 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs uppercase tracking-[1.5px] text-slate-500 font-semibold font-space">Management</h3>
+                <button
+                  onClick={() => setShowManagement(false)}
+                  className="xl:hidden p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] md:text-xs text-slate-500 block mb-1.5 font-space font-medium">Status</label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        onClick={() => setStatus(key)}
+                        className={`text-[10px] md:text-xs px-3 py-1.5 rounded-xl font-medium font-space transition-all ${
+                          status === key
+                            ? `${cfg.bg} ${cfg.color} ring-1 ring-white/10`
+                            : "text-slate-500 hover:text-slate-300 bg-white/[0.03] hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        {cfg.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] md:text-xs text-slate-500 block mb-1.5 font-space font-medium">Priority</label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        onClick={() => setPriority(key)}
+                        className={`text-[10px] md:text-xs px-3 py-1.5 rounded-xl font-medium font-space transition-all ${
+                          priority === key
+                            ? `${cfg.color} bg-white/[0.06] ring-1 ring-white/10`
+                            : "text-slate-500 hover:text-slate-300 bg-white/[0.03] hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        {cfg.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] md:text-xs text-slate-500 block mb-1.5 font-space font-medium">Assigned Staff</label>
+                  <select
+                    value={assignedStaffId}
+                    onChange={(e) => setAssignedStaffId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs md:text-sm text-slate-300 focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all"
+                  >
+                    <option value="" className="bg-[#050505]">Unassigned</option>
+                    {availableStaff.map((s: any) => (
+                      <option key={s.id} value={s.id} className="bg-[#050505]">
+                        {s.displayName || s.name || s.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] md:text-xs text-slate-500 block mb-1.5 font-space font-medium">Internal Notes</label>
+                  <textarea
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    rows={4}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs md:text-sm placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 resize-y font-space transition-all"
+                    placeholder="Private notes..."
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={saveChanges}
+                className="w-full py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs md:text-sm font-medium font-space transition-all active:scale-[0.97]"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile management drawer */}
+      {isAdmin && showManagement && (
+        <div className="fixed inset-0 z-50 xl:hidden" onClick={() => setShowManagement(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="absolute bottom-0 left-0 right-0 premium-glass-strong rounded-t-3xl border-t border-white/10 p-5 max-h-[80vh] overflow-y-auto premium-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-sm font-semibold text-white font-space">Ticket Management</h3>
+              <button onClick={() => setShowManagement(false)} className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition">
+                <X size={16} />
+              </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-slate-500 block mb-1.5 font-space">Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-800/60 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/50 font-space"
-                >
-                  <option value="OPEN">Open</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="RESOLVED">Resolved</option>
-                  <option value="CLOSED">Closed</option>
-                </select>
+                <label className="text-[10px] uppercase tracking-wider text-slate-500 block mb-1.5 font-space font-medium">Status</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                    <button
+                      key={key}
+                      onClick={() => setStatus(key)}
+                      className={`text-xs px-3 py-1.5 rounded-xl font-medium font-space transition-all ${
+                        status === key
+                          ? `${cfg.bg} ${cfg.color} ring-1 ring-white/10`
+                          : "text-slate-500 bg-white/[0.03]"
+                      }`}
+                    >
+                      {cfg.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
-                <label className="text-xs text-slate-500 block mb-1.5 font-space">Priority</label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-800/60 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/50 font-space"
-                >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="URGENT">Urgent</option>
-                </select>
+                <label className="text-[10px] uppercase tracking-wider text-slate-500 block mb-1.5 font-space font-medium">Priority</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
+                    <button
+                      key={key}
+                      onClick={() => setPriority(key)}
+                      className={`text-xs px-3 py-1.5 rounded-xl font-medium font-space transition-all ${
+                        priority === key
+                          ? `${cfg.color} bg-white/[0.06] ring-1 ring-white/10`
+                          : "text-slate-500 bg-white/[0.03]"
+                      }`}
+                    >
+                      {cfg.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
-                <label className="text-xs text-slate-500 block mb-1.5 font-space">Assigned Support Staff</label>
+                <label className="text-[10px] uppercase tracking-wider text-slate-500 block mb-1.5 font-space font-medium">Assigned Staff</label>
                 <select
                   value={assignedStaffId}
                   onChange={(e) => setAssignedStaffId(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-800/60 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/50 font-space"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-sm text-slate-300 focus:outline-none focus:border-[var(--accent)]/40 font-space"
                 >
-                  <option value="">Unassigned</option>
+                  <option value="" className="bg-[#050505]">Unassigned</option>
                   {availableStaff.map((s: any) => (
-                    <option key={s.id} value={s.id}>
+                    <option key={s.id} value={s.id} className="bg-[#050505]">
                       {s.displayName || s.name || s.email}
                     </option>
                   ))}
                 </select>
-                <p className="text-[10px] text-slate-500 mt-1 font-space">Change who handles this ticket for the client.</p>
               </div>
 
               <div>
-                <label className="text-xs text-slate-500 block mb-1.5 font-space">Internal Notes</label>
+                <label className="text-[10px] uppercase tracking-wider text-slate-500 block mb-1.5 font-space font-medium">Internal Notes</label>
                 <textarea
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
-                  rows={5}
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-800/60 border border-white/10 text-sm placeholder:text-slate-500 focus:border-blue-500/50 resize-y font-space"
-                  placeholder="Private notes for your team..."
+                  rows={3}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 text-sm placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 resize-y font-space"
+                  placeholder="Private notes..."
                 />
               </div>
             </div>
 
             <button
-              onClick={saveChanges}
-              className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-sm font-medium font-space transition active:scale-[0.985]"
+              onClick={() => { saveChanges(); setShowManagement(false); }}
+              className="w-full mt-4 py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-sm font-medium font-space transition-all active:scale-[0.97]"
             >
               Save Changes
             </button>
           </div>
         </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

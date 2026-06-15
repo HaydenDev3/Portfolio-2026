@@ -46,7 +46,7 @@ export default function FeaturedWork() {
       );
 
       tl.fromTo(
-        contentRef.current?.querySelectorAll(".reveal"),
+        contentRef.current?.querySelectorAll(".reveal") as any,
         { y: 30, opacity: 0 },
         { y: 0, opacity: 1, stagger: 0.12, duration: 0.7, ease: "power3.out" },
         "-=0.6"

@@ -3,10 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProjectDetailModal from "@/components/ProjectDetailModal";
+import ProjectKanban from "@/components/ProjectKanban";
+import ProjectProgress from "@/components/ProjectProgress";
+import { useToast } from "@/components/Toast";
+import { LayoutGrid, List, ExternalLink } from "lucide-react";
 
 interface Project {
   id: string;
   name: string;
+  description?: string | null;
   tier: string;
   price: number;
   status: string;
@@ -41,6 +46,8 @@ export default function ProjectsPage() {
     liveUrl: "",
   });
   const [isAdmin, setIsAdmin] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const { showUndoToast } = useToast();
 
   // Role check: clients can view their projects, but can't create
   useEffect(() => {
@@ -50,18 +57,12 @@ export default function ProjectsPage() {
         if (res.ok) {
           const data = await res.json();
           const role = data?.user?.role || data?.role;
-          const admin = role === "ADMIN";
-          setIsAdmin(admin);
-          if (!admin) {
-            router.push("/dashboard");
-          }
+          setIsAdmin(role === "ADMIN");
         }
-      } catch {
-        router.push("/dashboard");
-      }
+      } catch {}
     }
     checkRole();
-  }, [router]);
+  }, []);
 
   async function fetchProjects() {
     const res = await fetch("/api/projects");
@@ -187,6 +188,24 @@ export default function ProjectsPage() {
         </div>
       </div>
 
+      {/* View toggle */}
+      <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center gap-1 bg-white/[0.03] rounded-xl p-0.5 border border-white/10">
+          <button onClick={() => setViewMode("list")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-xs font-medium font-space transition-all ${
+              viewMode === "list" ? "bg-white text-black" : "text-slate-400 hover:text-white"
+            }`}>
+            <List size={13} /> List
+          </button>
+          <button onClick={() => setViewMode("kanban")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-xs font-medium font-space transition-all ${
+              viewMode === "kanban" ? "bg-white text-black" : "text-slate-400 hover:text-white"
+            }`}>
+            <LayoutGrid size={13} /> Kanban
+          </button>
+        </div>
+      </div>
+
       {isAdmin && showForm && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
           <div className="glass w-full max-w-md rounded-2xl p-6 border border-white/10" onClick={(e) => e.stopPropagation()}>
@@ -266,6 +285,26 @@ export default function ProjectsPage() {
         </div>
       ) : filteredProjects.length === 0 ? (
         <p className="text-slate-500">No projects match your filters.</p>
+      ) : viewMode === "kanban" ? (
+        <div className="-mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8">
+          <ProjectKanban
+            projects={filteredProjects}
+            onStatusChange={async (projectId, newStatus) => {
+              const oldStatus = projects.find((p) => p.id === projectId)?.status;
+              setProjects((prev) => prev.map((p) => p.id === projectId ? { ...p, status: newStatus } : p));
+              const res = await fetch(`/api/projects/${projectId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus }),
+              });
+              if (!res.ok) {
+                setProjects((prev) => prev.map((p) => p.id === projectId && oldStatus ? { ...p, status: oldStatus } : p));
+              }
+            }}
+            onToggleView={() => setViewMode("list")}
+            viewMode="kanban"
+          />
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProjects.map((p) => (
@@ -277,7 +316,7 @@ export default function ProjectsPage() {
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <div className="font-semibold text-lg text-white group-hover:text-blue-300 transition">{p.name}</div>
+                    <div className="font-semibold text-lg text-white group-hover:accent-text transition">{p.name}</div>
                     <div className="text-xs text-slate-500 mt-0.5">{p.client.name}</div>
                   </div>
                   <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[p.status]}`}>
@@ -285,7 +324,19 @@ export default function ProjectsPage() {
                   </span>
                 </div>
 
-                <p className="text-sm text-slate-400 mb-4 line-clamp-2 min-h-[2.5rem]">{p.description || "No description provided."}</p>
+                {/* Progress timeline for all users */}
+                <div className="mb-3">
+                  <ProjectProgress status={p.status} size="compact" />
+                  <div className="flex justify-between text-[8px] text-slate-600 mt-1 font-medium">
+                    <span>Start</span>
+                    <span>Design</span>
+                    <span>Build</span>
+                    <span>Launch</span>
+                    <span>Done</span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-400 mb-3 line-clamp-2 min-h-[2.5rem]">{p.description || "No description provided."}</p>
 
                 <div className="flex items-center justify-between text-xs mb-4">
                   <div className="flex items-center gap-2">
@@ -306,18 +357,20 @@ export default function ProjectsPage() {
                     <a
                       href={p.liveUrl}
                       target="_blank"
-                      className="flex-1 py-2 rounded-lg bg-blue-600 text-center text-white hover:bg-blue-500 transition"
+                      className="flex-1 py-2 rounded-lg bg-blue-600 text-center text-white hover:bg-blue-500 transition inline-flex items-center justify-center gap-1"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      Live
+                      <ExternalLink size={10} /> Live
                     </a>
                   )}
-                  <button
-                    onClick={() => billWithStripe(p)}
-                    className="flex-1 py-2 rounded-lg border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 transition font-space"
-                  >
-                    Bill
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => billWithStripe(p)}
+                      className="flex-1 py-2 rounded-lg border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 transition font-space"
+                    >
+                      Bill
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
