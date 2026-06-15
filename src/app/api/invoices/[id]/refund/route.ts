@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { getEffectiveUser } from "@/lib/impersonate";
 
 export async function POST(
@@ -42,7 +42,7 @@ export async function POST(
     // Perform the refund via Stripe (idempotent safe if already refunded on Stripe side)
     let refund;
     try {
-      refund = await stripe.refunds.create({
+      refund = await getStripe().refunds.create({
         payment_intent: invoice.stripePaymentIntentId,
         reason: "requested_by_customer",
         metadata: {

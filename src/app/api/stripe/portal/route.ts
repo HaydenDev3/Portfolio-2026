@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { auth } from "@/lib/auth";
 
 export async function GET() {
@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const checkoutSession = await stripe.checkout.sessions.list({
+    const checkoutSession = await getStripe().checkout.sessions.list({
       customer_details: { email: session.user.email },
       limit: 1,
     });
@@ -21,7 +21,7 @@ export async function GET() {
       );
     }
 
-    const portal = await stripe.billingPortal.sessions.create({
+    const portal = await getStripe().billingPortal.sessions.create({
       customer: checkoutSession.data[0].customer as string,
       return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/client/dashboard`,
     });

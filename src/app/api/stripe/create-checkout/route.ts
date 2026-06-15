@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stripe, PLANS } from "@/lib/stripe";
+import { getStripe, PLANS } from "@/lib/stripe";
 import type { PlanKey } from "@/lib/stripe";
 
 export async function POST(req: Request) {
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       lineItems.push({ price: PLANS.maintenance.id, quantity: 1 });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       // Use subscription mode whenever the cart contains a recurring item
       // (either the main "maintenance" tier, or the maintenance addon on a one-time website package).
       // Stripe does not allow recurring prices in `payment` mode.
