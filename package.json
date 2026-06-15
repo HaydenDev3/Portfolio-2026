@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "dev:turbopack": "next dev",
-    "build": "next build",
+    "build": "npx prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
