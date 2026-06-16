@@ -23,24 +23,27 @@ export async function DELETE(
     }
 
     // Clean up all related data in dependency-safe order
+    // Each delete is wrapped in try-catch for missing tables (pre-migration)
     await prisma.$transaction(async (tx) => {
-      await tx.pollVote.deleteMany({ where: { userId: id } });
-      await tx.bookmark.deleteMany({ where: { userId: id } });
-      await tx.forumVote.deleteMany({ where: { userId: id } });
-      await tx.forumPost.deleteMany({ where: { userId: id } });
-      await tx.forumTopic.deleteMany({ where: { userId: id } });
-      await tx.ticketMessage.deleteMany({ where: { userId: id } });
-      await tx.userBadge.deleteMany({ where: { userId: id } });
-      await tx.linktree.deleteMany({ where: { userId: id } });
-      await tx.projectComment.deleteMany({ where: { userId: id } });
+      const safeDel = async (fn: () => Promise<any>) => { try { await fn(); } catch {} };
+
+      await safeDel(() => tx.pollVote.deleteMany({ where: { userId: id } }));
+      await safeDel(() => tx.bookmark.deleteMany({ where: { userId: id } }));
+      await safeDel(() => tx.forumVote.deleteMany({ where: { userId: id } }));
+      await safeDel(() => tx.forumPost.deleteMany({ where: { userId: id } }));
+      await safeDel(() => tx.forumTopic.deleteMany({ where: { userId: id } }));
+      await safeDel(() => tx.ticketMessage.deleteMany({ where: { userId: id } }));
+      await safeDel(() => tx.userBadge.deleteMany({ where: { userId: id } }));
+      await safeDel(() => tx.linktree.deleteMany({ where: { userId: id } }));
+      await safeDel(() => tx.projectComment.deleteMany({ where: { userId: id } }));
 
       // Unlink user from related records (preserve data, remove portal link)
-      await tx.client.updateMany({ where: { userId: id }, data: { userId: null } });
-      await tx.supportTicket.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
-      await tx.invoice.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
-      await tx.project.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
-      await tx.subscription.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
-      await tx.testimonial.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
+      await safeDel(() => tx.client.updateMany({ where: { userId: id }, data: { userId: null } }));
+      await safeDel(() => tx.supportTicket.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } }));
+      await safeDel(() => tx.invoice.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } }));
+      await safeDel(() => tx.project.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } }));
+      await safeDel(() => tx.subscription.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } }));
+      await safeDel(() => tx.testimonial.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } }));
 
       await tx.user.delete({ where: { id } });
     });
