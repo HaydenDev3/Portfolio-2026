@@ -7,6 +7,7 @@ import {
   Database, CreditCard, Globe, Sparkles, Send, Tag, Layout,
   RefreshCw, Check, Loader2,
 } from "lucide-react";
+import PasswordInput from "@/components/PasswordInput";
 
 type Step = "env" | "admin" | "stripe" | "email" | "categories" | "branding" | "done";
 
@@ -247,14 +248,10 @@ export default function SetupPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-slate-300 font-space mb-1.5 block">Password</label>
-                      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} placeholder="Min 8 characters"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 transition-all font-space" />
+                      <PasswordInput label="Password" value={password} onChange={setPassword} required minLength={8} placeholder="Min 8 characters" />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-slate-300 font-space mb-1.5 block">Confirm</label>
-                      <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required placeholder="Repeat password"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 transition-all font-space" />
+                      <PasswordInput label="Confirm" value={confirm} onChange={setConfirm} required placeholder="Repeat password" id="confirm-password" />
                     </div>
                   </div>
                   {error && <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-space">{error}</div>}

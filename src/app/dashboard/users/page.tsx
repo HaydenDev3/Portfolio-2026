@@ -6,6 +6,7 @@ import UserProfilePopover from "@/components/UserProfilePopover";
 import ProfilePreviewModal from "@/components/ProfilePreviewModal";
 import AccountSettingsModal from "@/components/AccountSettingsModal";
 import { useToast } from "@/components/Toast";
+import PasswordInput from "@/components/PasswordInput";
 import { getPlatformLabel, getSocialIcon } from "@/lib/utils";
 import { Settings } from "lucide-react";
 
@@ -309,14 +310,7 @@ export default function AdminUsersPage() {
               onChange={(e) => setNewEmail(e.target.value)}
               className="px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 font-space text-sm"
             />
-            <input
-              placeholder="Password *"
-              type="password"
-              required
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 font-space text-sm"
-            />
+            <PasswordInput value={newPassword} onChange={setNewPassword} required minLength={8} placeholder="Password *" />
             <select
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}

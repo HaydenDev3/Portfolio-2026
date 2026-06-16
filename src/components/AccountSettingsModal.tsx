@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Save, Eye, User, Bell, Key, Palette, Link as LinkIcon, MessageCircle, Mail, Check, ChevronDown, Monitor, Moon, Smartphone } from "lucide-react";
 import ProfilePreviewModal from "@/components/ProfilePreviewModal";
 import { useToast } from "@/components/Toast";
+import PasswordInput from "@/components/PasswordInput";
 
 function Toggle({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id?: string }) {
   return (
@@ -164,6 +165,9 @@ export default function AccountSettingsModal({ open, onClose, initialUser }: Acc
   const [newEmail, setNewEmail] = useState("");
   const [previewData, setPreviewData] = useState<any>(null);
   const [userLinktrees, setUserLinktrees] = useState<any[]>([]);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [form, setForm] = useState({
     name: "", displayName: "", bio: "", image: "", banner: "",
@@ -774,27 +778,23 @@ export default function AccountSettingsModal({ open, onClose, initialUser }: Acc
                 )}
 
                 {/* AUTH */}
-                {activeTab === 'auth' && (
+                  {activeTab === 'auth' && (
                   <div className="max-w-lg space-y-5">
                     <div>
                       <span className="text-[10px] uppercase tracking-[1.5px] text-slate-500 font-semibold font-space block mb-3">Change Password</span>
                       <form onSubmit={async (e) => {
                         e.preventDefault();
-                        const formEl = e.currentTarget as HTMLFormElement;
-                        const current = (formEl.currentPassword as any).value;
-                        const newPass = (formEl.newPassword as any).value;
-                        const confirm = (formEl.confirmPassword as any).value;
-                        if (newPass !== confirm) { showToast("Passwords do not match", "error"); return; }
-                        if (!current || !newPass) { showToast("Fill all fields", "error"); return; }
+                        if (newPassword !== confirmPassword) { showToast("Passwords do not match", "error"); return; }
+                        if (!currentPassword || !newPassword) { showToast("Fill all fields", "error"); return; }
                         setSaving(true);
-                        const res = await fetch("/api/user/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: current, newPassword: newPass }) });
+                        const res = await fetch("/api/user/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
                         setSaving(false);
-                        if (res.ok) { showToast("Password changed", "success"); formEl.reset(); }
+                        if (res.ok) { showToast("Password changed", "success"); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); }
                         else { const err = await res.json().catch(() => ({})); showToast(err.error || "Failed", "error"); }
                       }} className="space-y-3.5">
-                        <PremiumInput label="Current Password" value="" onChange={() => {}} placeholder="Enter current password" type="password" />
-                        <PremiumInput label="New Password" value="" onChange={() => {}} placeholder="At least 8 characters" type="password" />
-                        <PremiumInput label="Confirm New Password" value="" onChange={() => {}} placeholder="Confirm new password" type="password" />
+                        <PasswordInput label="Current Password" value={currentPassword} onChange={setCurrentPassword} placeholder="Enter current password" required />
+                        <PasswordInput label="New Password" value={newPassword} onChange={setNewPassword} placeholder="At least 8 characters" required minLength={8} />
+                        <PasswordInput label="Confirm New Password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm new password" required />
                         <button type="submit" disabled={saving}
                           className="w-full py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 disabled:opacity-60 text-sm font-medium font-space transition-all active:scale-[0.97] flex items-center justify-center gap-2">
                           <Check size={15} /> {saving ? "Updating..." : "Change Password"}
