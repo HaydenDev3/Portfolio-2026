@@ -42,7 +42,7 @@ export default function Navbar() {
   const navRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
   const pathname = usePathname();
-  const hidden = pathname.startsWith("/dashboard") || pathname.startsWith("/client");
+  const hidden = pathname.startsWith("/dashboard") || pathname.startsWith("/client") || pathname.startsWith("/setup");
 
   const isLoggedIn = !!sessionUser;
 
