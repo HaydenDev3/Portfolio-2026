@@ -419,9 +419,53 @@
     overscroll-behavior: contain;
   }
 
-  /* Smooth section transitions */
+  /* Smooth section transitions with spring */
   .mobile-section {
-    animation: mobile-fade-in 0.4s ease-out;
+    animation: mobile-fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Smoother card entrance staggering */
+  .card-enter {
+    animation: card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+  }
+
+  /* Better touch feedback for all interactive elements */
+  .touch-feedback {
+    transition: transform 0.12s ease, opacity 0.12s ease;
+  }
+  .touch-feedback:active {
+    transform: scale(0.97);
+  }
+
+  /* All glass cards get scale feedback on mobile */
+  .glass:active, .premium-glass:active, .premium-glass-strong:active {
+    transform: scale(0.985);
+  }
+
+  /* Safe area insets for modern phones */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Prevent text size adjustment on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Smooth 60fps scroll */
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+@media (hover: hover) {
+  .touch-feedback:hover {
+    opacity: 0.85;
   }
 }
 
