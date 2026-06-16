@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/Toast";
-import { Plus, Copy, Check, Key, Users, Clock, Sparkles, RefreshCw } from "lucide-react";
+import { Plus, Copy, Check, Key, Users, Clock, Sparkles, RefreshCw, Share2 } from "lucide-react";
 
 export default function InvitesPage() {
   const { showToast } = useToast();
@@ -134,6 +134,17 @@ export default function InvitesPage() {
                       <button onClick={() => copyCode(c.code, c.id)}
                         className="p-1 rounded-lg text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all">
                         {copiedId === c.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      </button>
+                      <button onClick={async () => {
+                        const url = `${window.location.origin}/auth/register?code=${c.code}`;
+                        if (navigator.share) {
+                          await navigator.share({ title: "Invite Code", text: `Use my invite code: ${c.code}`, url });
+                        } else {
+                          navigator.clipboard.writeText(url);
+                          showToast("Registration link copied", "success");
+                        }
+                      }} className="p-1 rounded-lg text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all" title="Share invite">
+                        <Share2 size={12} />
                       </button>
                     </div>
                     <div className="flex items-center gap-3 text-[10px] text-slate-500 font-space mt-0.5">

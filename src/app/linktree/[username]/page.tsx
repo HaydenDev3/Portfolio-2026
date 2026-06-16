@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getPlatformLabel, getSocialIcon } from "@/lib/utils";
 import { siteConfig } from "@/lib/config";
@@ -8,6 +9,26 @@ import { ExternalLink, Copy } from "lucide-react";
 interface SocialLink {
   platform: string;
   url: string;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  try {
+    const { username } = await params;
+    let user = await prisma.user.findUnique({ where: { username }, select: { displayName: true, name: true, bio: true, image: true } });
+    if (!user) user = await prisma.user.findUnique({ where: { id: username }, select: { displayName: true, name: true, bio: true, image: true } });
+    if (!user) return { title: `Linktree — ${siteConfig.title}` };
+    const name = user.displayName || user.name || username;
+    return {
+      title: `${name} — Linktree`,
+      description: user.bio || `Connect with ${name} on ${siteConfig.name}`,
+      openGraph: {
+        title: `${name} — Linktree`,
+        description: user.bio || `Connect with ${name}`,
+        images: user.image ? [{ url: user.image }] : [],
+      },
+      twitter: { card: "summary", title: `${name} — Linktree`, description: user.bio || "" },
+    };
+  } catch { return { title: `Linktree — ${siteConfig.title}` }; }
 }
 
 function PlatformIcon({ platform }: { platform: string }) {

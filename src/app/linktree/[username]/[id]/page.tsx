@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getPlatformLabel, getSocialIcon } from "@/lib/utils";
 import { siteConfig } from "@/lib/config";
@@ -8,6 +9,21 @@ import { ExternalLink, Globe } from "lucide-react";
 interface SocialLink {
   platform: string;
   url: string;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ username: string; id: string }> }): Promise<Metadata> {
+  try {
+    const { id } = await params;
+    const linktree = await prisma.linktree.findUnique({ where: { id }, include: { user: { select: { displayName: true, name: true, bio: true, image: true } } } });
+    if (!linktree || !linktree.user) return { title: `Linktree — ${siteConfig.title}` };
+    const name = linktree.user.displayName || linktree.user.name || "User";
+    return {
+      title: `${name} — ${linktree.name}`,
+      description: linktree.user.bio || `Check out ${name}'s links`,
+      openGraph: { title: `${name} — ${linktree.name}`, description: linktree.user.bio || "", images: linktree.user.image ? [{ url: linktree.user.image }] : [] },
+      twitter: { card: "summary", title: `${name} — ${linktree.name}` },
+    };
+  } catch { return { title: `Linktree — ${siteConfig.title}` }; }
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
