@@ -169,15 +169,19 @@ export default async function SpecificLinktreePage({
         )}
 
         {/* Back link */}
-        <div className="mt-10 text-center">
-          <Link href={`/linktree/${user.username}`}
-            className="text-xs text-blue-400 hover:text-blue-300 font-space transition-colors">
-            All linktrees for @{user.username} →
-          </Link>
-        </div>
-
-        <div className="mt-4 text-center text-[9px] text-slate-700 font-space">
-          Powered by {siteConfig.name} · {new Date().getFullYear()}
+        <div className="mt-8 text-center space-y-2">
+          <a href="/" className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-space transition-colors">
+            ← Back to {siteConfig.name}
+          </a>
+          <div className="mt-2">
+            <Link href={`/linktree/${user.username}`}
+              className="text-xs text-blue-400 hover:text-blue-300 font-space transition-colors">
+              All linktrees for @{user.username} →
+            </Link>
+          </div>
+          <div className="text-[9px] text-slate-700 font-space">
+            Powered by {siteConfig.name} · {new Date().getFullYear()}
+          </div>
         </div>
       </div>
     </div>

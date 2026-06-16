@@ -178,14 +178,19 @@ export default async function LinktreePage({
         )}
 
         {/* Footer */}
-        <div className="mt-12 text-center">
-          <Link href="/forum"
-            className="text-xs text-slate-500 hover:text-slate-300 font-space transition-colors">
-            View profile &amp; community on {siteConfig.name}
-          </Link>
-        </div>
-        <div className="mt-4 text-center text-[9px] text-slate-700 font-space">
-          Powered by {siteConfig.name} · {new Date().getFullYear()}
+        <div className="mt-8 text-center space-y-2">
+          <a href="/" className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-space transition-colors">
+            ← Back to {siteConfig.name}
+          </a>
+          <div className="mt-4 text-center">
+            <Link href="/forum"
+              className="text-xs text-slate-500 hover:text-slate-300 font-space transition-colors">
+              View profile &amp; community on {siteConfig.name}
+            </Link>
+          </div>
+          <div className="text-[9px] text-slate-700 font-space">
+            Powered by {siteConfig.name} · {new Date().getFullYear()}
+          </div>
         </div>
       </div>
     </div>
