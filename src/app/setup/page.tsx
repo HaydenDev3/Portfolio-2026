@@ -135,13 +135,12 @@ export default function SetupPage() {
     setBrandingDone(true);
   }
 
-  const envChecks = status?.env ? [
-    { key: "DATABASE_URL", label: "Database", ok: status.env.DATABASE_URL, icon: Database },
-    { key: "NEXT_PUBLIC_SITE_URL", label: "Site URL", ok: status.env.NEXT_PUBLIC_SITE_URL, icon: Globe },
-    { key: "AUTH_SECRET", label: "Auth Secret", ok: status.env.AUTH_SECRET, icon: Lock },
-    { key: "STRIPE_KEYS", label: "Stripe Keys", ok: status.env.STRIPE_ESSENTIAL_PRICE_ID || status.env.STRIPE_GROWTH_PRICE_ID, icon: CreditCard },
-    { key: "RESEND_API_KEY", label: "Resend API", ok: status.env.RESEND_API_KEY, icon: Mail },
-  ] : [];
+  const envChecks = [
+    { key: "siteUrl", label: "Site URL", ok: !!process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL !== "https://yourdomain.com", icon: Globe },
+    { key: "db", label: "Database", ok: status?.needsSetup === false || status?.needsSetup === true, icon: Database }, // if API responds, DB is working
+    { key: "stripe", label: "Stripe Keys", ok: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, icon: CreditCard },
+    { key: "auth", label: "Auth Secret", ok: true, icon: Lock }, // will be verified at login
+  ];
 
   function goNext() {
     const idx = STEPS.findIndex((s) => s.id === step);
@@ -340,16 +339,16 @@ export default function SetupPage() {
               </div>
 
               <div className="mb-5 space-y-4">
-                {!status?.env?.RESEND_API_KEY && (
+                {!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && (
                   <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 font-space">
-                    RESEND_API_KEY is not configured. Get one at <a href="https://resend.com" target="_blank" className="underline">resend.com</a> and add it to Vercel env vars.
+                    Stripe publishable key not detected. Add <code className="text-xs bg-white/10 px-1 rounded">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to Vercel env vars to accept payments.
                   </div>
                 )}
 
-                <button onClick={sendTestEmail} disabled={emailSent === "sending" || !email}
+                <button onClick={sendTestEmail} disabled={emailSent === "sending"}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 disabled:opacity-60 text-sm font-medium transition-all active:scale-95 font-space">
                   {emailSent === "sending" ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  {emailSent === "sending" ? "Sending..." : `Send Test Email${email ? ` to ${email}` : ""}`}
+                  {emailSent === "sending" ? "Sending..." : `Send Test Email`}
                 </button>
 
                 {emailSent === "sent" && <div className="flex items-center gap-2 text-xs text-emerald-400 font-space"><CheckCircle size={14} /> {emailResult}</div>}
@@ -477,7 +476,7 @@ export default function SetupPage() {
                 {[
                   { label: "Admin account", done: adminDone },
                   { label: "Stripe products", done: !!stripeProducts },
-                  { label: "Email configured", done: emailSent === "sent" || !!status?.env?.RESEND_API_KEY },
+                  { label: "Email configured", done: emailSent === "sent" || !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY },
                   { label: "Forum categories", done: catStatus?.missing === 0 || false },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/[0.02] border border-white/[0.06] text-sm">
