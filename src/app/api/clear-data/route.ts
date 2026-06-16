@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
-    // Authenticate via AUTH_SECRET Bearer token only (no session required)
-    // This allows clearing data even if admin is locked out of their account
+    // Accept either:
+    // 1. AUTH_SECRET Bearer token (for curl/automation)
+    // 2. Valid admin session (for the dashboard button)
     const authHeader = req.headers.get("authorization");
     const expectedToken = process.env.AUTH_SECRET;
-    if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
+    const tokenValid = expectedToken && authHeader === `Bearer ${expectedToken}`;
+
+    const session = await auth();
+    const sessionValid = session?.user?.role === "ADMIN";
+
+    if (!tokenValid && !sessionValid) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
