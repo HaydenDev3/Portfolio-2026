@@ -60,9 +60,6 @@ export default function SetupPage() {
     fetch("/api/setup").then((r) => r.json()).then((data) => {
       setStatus(data);
       setLoading(false);
-      if (data.hasAdmin) {
-        setAdminDone(true);
-      }
     }).catch(() => { setLoading(false); setError("Cannot check setup. DB connected?"); });
   }, []);
 

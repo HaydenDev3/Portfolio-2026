@@ -7,16 +7,20 @@ export default async function SetupLayout({
 }: {
   children: ReactNode;
 }) {
-  // Server-side guard: if an admin already exists, redirect to login
-  // This prevents anyone from accessing the setup page after initial setup
+  // Strict server-side guard: if admin exists OR DB check fails, deny access.
+  // The setup page should NEVER be accessible after initial configuration.
+  let adminExists = true;
+
   try {
-    const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
-    if (adminCount > 0) {
-      redirect("/auth/login");
-    }
-  } catch (e) {
-    // DB might not be ready yet — allow setup to proceed
-    console.error("Setup layout guard check failed:", e);
+    const count = await prisma.user.count({ where: { role: "ADMIN" } });
+    adminExists = count > 0;
+  } catch {
+    // DB unavailable — deny access rather than risk exposing setup
+    adminExists = true;
+  }
+
+  if (adminExists) {
+    redirect("/auth/login");
   }
 
   return <>{children}</>;
