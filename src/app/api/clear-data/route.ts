@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
-    // Must be authenticated as ADMIN
-    const session = await auth();
-    if (session?.user?.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Also require AUTH_SECRET as Bearer token for safety
+    // Authenticate via AUTH_SECRET Bearer token only (no session required)
+    // This allows clearing data even if admin is locked out of their account
     const authHeader = req.headers.get("authorization");
     const expectedToken = process.env.AUTH_SECRET;
     if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
-      return NextResponse.json({ error: "Invalid security token" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Keep admin users + forum categories, delete everything else
