@@ -18,36 +18,37 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-
     if (user.role === "ADMIN") {
-      return NextResponse.json(
-        { error: "Cannot delete another admin" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Cannot delete another admin" }, { status: 403 });
     }
 
-    // Cleanup related data to prevent FK errors and make delete work.
-    // Wrapped in .catch() / try-catch because after schema changes (e.g. adding Linktree model),
-    // you must run `npx prisma generate && npx prisma db push` then restart the dev server,
-    // otherwise the generated Prisma client may not know about new models yet (causing "undefined (reading 'deleteMany')").
-    await prisma.userBadge.deleteMany({ where: { userId: id } }).catch(() => {});
-    try {
-      // Linktree may not be present in the client if not regenerated
-      await prisma.linktree.deleteMany({ where: { userId: id } }).catch(() => {});
-    } catch {}
-    // Unlink client record (keep project/invoice data but remove portal link)
-    await prisma.client.updateMany({ where: { userId: id }, data: { userId: null } }).catch(() => {});
-    // Unlink from tickets, invoices, projects (data preserved)
-    await prisma.supportTicket.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } }).catch(() => {});
-    await prisma.invoice.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } }).catch(() => {});
-    await prisma.project.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } }).catch(() => {});
+    // Clean up all related data in dependency-safe order
+    await prisma.$transaction(async (tx) => {
+      await tx.pollVote.deleteMany({ where: { userId: id } });
+      await tx.bookmark.deleteMany({ where: { userId: id } });
+      await tx.forumVote.deleteMany({ where: { userId: id } });
+      await tx.forumPost.deleteMany({ where: { userId: id } });
+      await tx.forumTopic.deleteMany({ where: { userId: id } });
+      await tx.ticketMessage.deleteMany({ where: { userId: id } });
+      await tx.userBadge.deleteMany({ where: { userId: id } });
+      await tx.linktree.deleteMany({ where: { userId: id } });
+      await tx.projectComment.deleteMany({ where: { userId: id } });
 
-    await prisma.user.delete({ where: { id } });
+      // Unlink user from related records (preserve data, remove portal link)
+      await tx.client.updateMany({ where: { userId: id }, data: { userId: null } });
+      await tx.supportTicket.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
+      await tx.invoice.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
+      await tx.project.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
+      await tx.subscription.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
+      await tx.testimonial.updateMany({ where: { clientUserId: id }, data: { clientUserId: null } });
+
+      await tx.user.delete({ where: { id } });
+    });
 
     return NextResponse.json({ message: "User deleted" });
   } catch (error) {
     console.error("Error deleting user:", error);
-    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete user. Check server logs for details." }, { status: 500 });
   }
 }
 
@@ -78,14 +79,14 @@ export async function PATCH(
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
-    const user = await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id },
       data: updatable,
       select: { id: true, email: true, banned: true, phone: true, company: true, notes: true, clientStatus: true, role: true, name: true, socialLinks: true },
     });
 
-    // Keep linked Client in sync for CLIENT users (best-effort)
-    if (user.role === "CLIENT") {
+    // Keep linked Client in sync for CLIENT users
+    if (updatedUser.role === "CLIENT") {
       try {
         await prisma.client.updateMany({
           where: { userId: id },
@@ -100,7 +101,7 @@ export async function PATCH(
       } catch {}
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json(updatedUser);
   } catch (error) {
     console.error("Error updating user:", error);
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });

@@ -63,3 +63,36 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const client = await prisma.client.findUnique({ where: { id } });
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    // Unlink and delete in transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.project.updateMany({ where: { clientId: id }, data: { clientId: "" as any } });
+      await tx.invoice.updateMany({ where: { clientId: id }, data: { clientId: "" as any } });
+      await tx.subscription.updateMany({ where: { clientId: id }, data: { clientId: "" as any } });
+      await tx.supportTicket.updateMany({ where: { clientId: id }, data: { clientId: "" as any } });
+      await tx.testimonial.updateMany({ where: { clientId: id }, data: { clientId: null } });
+      await tx.client.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ message: "Legacy client deleted" });
+  } catch (error) {
+    console.error("Error deleting client:", error);
+    return NextResponse.json({ error: "Failed to delete client" }, { status: 500 });
+  }
+}

@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import InfiniteScroll from "@/components/InfiniteScroll";
+import { useToast } from "@/components/Toast";
 
 interface Client {
   id: string;
@@ -25,12 +27,16 @@ export default function ClientsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    company: "",
-    notes: "",
+    name: "", email: "", phone: "", company: "", notes: "",
   });
+  const { showToast } = useToast();
+
+  async function deleteClient(id: string, name: string) {
+    if (!confirm(`Delete legacy client "${name}"? This cannot be undone.`)) return;
+    const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
+    if (res.ok) { showToast("Client deleted", "success"); loadClients(true); }
+    else { showToast("Failed to delete", "error"); }
+  }
 
   async function loadClients(reset = false) {
     const currentSkip = reset ? 0 : skip;
@@ -192,6 +198,12 @@ export default function ClientsPage() {
                       </td>
                       <td className="p-3 md:p-4 text-slate-500 text-xs whitespace-nowrap">
                         {new Date(client.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="p-3 md:p-4 whitespace-nowrap">
+                        <button onClick={() => deleteClient(client.id, client.name)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}
