@@ -5,13 +5,20 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PasswordInput from "@/components/PasswordInput";
-import { ArrowRight, Shield, Mail, KeyRound, Sparkles } from "lucide-react";
+import { ArrowRight, Shield, Mail, KeyRound, Sparkles, Lock, RotateCcw } from "lucide-react";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSecret, setResetSecret] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetErr, setResetErr] = useState("");
+  const [resetting, setResetting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
@@ -80,6 +87,42 @@ function LoginForm() {
           </form>
 
           <div className="mt-5 pt-5 border-t border-white/[0.06] space-y-3">
+            <button onClick={() => setShowReset(!showReset)}
+              className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl premium-glass text-sm text-slate-300 hover:text-white transition-all active:scale-[0.97] font-space">
+              <RotateCcw size={14} /> {showReset ? "Back to sign in" : "Forgot admin password?"}
+            </button>
+
+            {showReset && (
+              <div className="pt-4 border-t border-white/[0.06] space-y-3">
+                <p className="text-xs text-slate-500 font-space">Reset your admin password using your AUTH_SECRET from Vercel.</p>
+                <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} required placeholder="Admin email"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 transition-all font-space" />
+                <input type="password" value={resetNewPassword} onChange={(e) => setResetNewPassword(e.target.value)} required minLength={8} placeholder="New password"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 transition-all font-space" />
+                <div>
+                  <input type="text" value={resetSecret} onChange={(e) => setResetSecret(e.target.value)} required placeholder="AUTH_SECRET"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 transition-all font-space" />
+                  <p className="text-[9px] text-slate-600 font-space mt-1">Found in Vercel → Project Settings → Environment Variables</p>
+                </div>
+                {resetErr && <div className="text-xs text-red-400 bg-red-500/10 p-2.5 rounded-xl border border-red-500/20">{resetErr}</div>}
+                {resetMsg && <div className="text-xs text-emerald-400 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">{resetMsg}</div>}
+                <button onClick={async () => {
+                  setResetErr(""); setResetMsg(""); setResetting(true);
+                  const res = await fetch("/api/auth/reset", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: resetEmail, newPassword: resetNewPassword, adminSecret: resetSecret }),
+                  });
+                  const d = await res.json();
+                  setResetting(false);
+                  if (res.ok) { setResetMsg("Password reset! You can now sign in."); setShowReset(false); }
+                  else { setResetErr(d.error || "Failed"); }
+                }} disabled={resetting}
+                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 disabled:opacity-60 text-sm font-medium transition-all active:scale-[0.97]">
+                  {resetting ? "Resetting..." : "Reset Password"}
+                </button>
+              </div>
+            )}
+
             <Link href="/auth/register"
               className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl premium-glass text-sm text-slate-300 hover:text-white transition-all active:scale-[0.97] font-space">
               <KeyRound size={14} /> Got an invite code?
