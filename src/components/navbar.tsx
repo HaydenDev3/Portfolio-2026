@@ -13,6 +13,9 @@ import {
   LogIn,
   Plus,
   Calendar,
+  User,
+  Settings,
+  LogOut,
 } from "lucide-react";
 import { siteConfig } from "@/lib/config";
 import AuthNavItem from "./AuthNavItem";
@@ -257,13 +260,7 @@ function BottomNavProfile({ user }: { user: SessionUser }) {
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (
-        open &&
-        menuRef.current &&
-        !menuRef.current.contains(e.target as Node) &&
-        btnRef.current &&
-        !btnRef.current.contains(e.target as Node)
-      ) {
+      if (open && menuRef.current && !menuRef.current.contains(e.target as Node) && btnRef.current && !btnRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
@@ -277,16 +274,12 @@ function BottomNavProfile({ user }: { user: SessionUser }) {
 
   return (
     <div className="relative">
-      <Link
-        href={profileHref}
-        className="flex flex-col items-center gap-0.5 transition-all duration-200 active:scale-85 text-zinc-500 hover:text-zinc-300"
-        onClick={() => setOpen(false)}
-      >
-        <div className="w-5 h-5 rounded-full overflow-hidden ring-1 ring-white/20 transition-transform duration-200">
+      <Link href={profileHref} className="flex flex-col items-center gap-0.5 transition-all duration-200 active:scale-85 text-zinc-500 hover:text-zinc-300" onClick={() => setOpen(false)}>
+        <div className="w-5 h-5 rounded-full overflow-hidden ring-2 ring-white/10 transition-transform duration-200">
           {user.image ? (
             <img src={user.image} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-blue-500/20 text-blue-400 font-bold text-[8px]">
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500/30 to-purple-500/30 text-white font-bold text-[8px]">
               {initial}
             </div>
           )}
@@ -294,23 +287,26 @@ function BottomNavProfile({ user }: { user: SessionUser }) {
         <span className="text-[9px] font-space font-medium">Profile</span>
       </Link>
 
-      <button
-        ref={btnRef}
-        onClick={() => setOpen(!open)}
-        className="absolute inset-0 opacity-0"
-        aria-label="Profile menu"
-      />
+      <button ref={btnRef} onClick={() => setOpen(!open)} className="absolute inset-0 opacity-0" aria-label="Profile menu" />
       {open && (
-        <div
-          ref={menuRef}
-          className="absolute bottom-full right-0 mb-2 w-44 glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-50"
-        >
-          <div className="px-4 py-3 border-b border-white/10">
-            <p className="text-sm font-semibold text-white font-space truncate">
-              {user.name ?? user.email}
-            </p>
-            <p className="text-[10px] text-slate-500 font-space">{user.role}</p>
+        <div ref={menuRef} className="absolute bottom-full right-0 mb-3 w-52 premium-glass-strong rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-50">
+          {/* User info header */}
+          <div className="px-4 py-3.5 border-b border-white/[0.06] flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white/10 shrink-0 bg-gradient-to-br from-blue-500/30 to-purple-500/30">
+              {user.image ? (
+                <img src={user.image} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white font-bold text-xs">{initial}</div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white font-space truncate">{user.name ?? user.email}</p>
+              {user.name && user.email && <p className="text-[10px] text-slate-500 font-space truncate">{user.email}</p>}
+              <span className="text-[9px] px-1.5 py-px rounded-full bg-white/5 text-slate-400 font-space font-medium mt-0.5 inline-block">{user.role}</span>
+            </div>
           </div>
+
+          {/* Menu items */}
           <div className="p-1.5">
             <Link href={dashboardHref} onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all font-space">
               <LayoutDashboard size={14} /> Dashboard
@@ -319,12 +315,17 @@ function BottomNavProfile({ user }: { user: SessionUser }) {
               <MessageSquare size={14} /> Forum
             </Link>
             <Link href={profileHref} onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 rounded-xl transition-all font-space">
-              Edit Profile
+              <User size={14} /> Edit Profile
+            </Link>
+            <div className="border-t border-white/[0.06] my-1" />
+            <Link href="/setup" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all font-space">
+              <Settings size={14} /> Settings
             </Link>
           </div>
-          <div className="border-t border-white/10 p-1.5">
+
+          <div className="border-t border-white/[0.06] p-1.5">
             <button onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-red-400 hover:bg-red-500/10 rounded-xl transition-all font-space text-left">
-              Sign Out
+              <LogOut size={14} /> Sign Out
             </button>
           </div>
         </div>

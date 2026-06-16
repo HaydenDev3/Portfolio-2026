@@ -19,6 +19,7 @@ import {
   Globe,
   Cog,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 
 interface NavItem {
@@ -88,6 +89,14 @@ const navGroups: NavGroup[] = [
       { label: "System Health", href: "/dashboard/system", icon: BarChart3 },
       { label: "Settings", href: "/dashboard/settings", icon: Settings },
       { label: "Vercel", href: "/dashboard/vercel", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Data Tools",
+    adminOnly: true,
+    items: [
+      { label: "Clear Test Data", href: "/dashboard/data", icon: Trash2 },
+      { label: "Badge Manager", href: "/dashboard/badges", icon: Star },
     ],
   },
   {
