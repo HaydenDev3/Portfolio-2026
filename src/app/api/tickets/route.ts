@@ -153,25 +153,18 @@ export async function POST(req: Request) {
           to: clientEmail,
           subject: ticket.subject,
           message: ticket.message,
-          ticketId: ticket.id,
-          isAdminNotification: false,
+          ticketUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://haydenf.fyi"}/dashboard/tickets/${ticket.id}`,
         });
       }
 
       // Notify admin(s)
       const adminTarget = process.env.AUTH_ADMIN_EMAIL || process.env.NEXT_PUBLIC_EMAIL;
       if (adminTarget) {
-        const clientName =
-          (await prisma.user.findUnique({ where: { id: effectiveUserId || "" } }))?.name ||
-          sessionForEmail?.user?.email;
-
         await sendNewTicketNotification({
           to: adminTarget,
-          subject: ticket.subject,
-          message: ticket.message,
-          ticketId: ticket.id,
-          clientName: clientName || undefined,
-          isAdminNotification: true,
+          subject: `[New Ticket] ${ticket.subject}`,
+          message: `${ticket.message}\n\nFrom: ${sessionForEmail?.user?.email || "Unknown"}`,
+          ticketUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://haydenf.fyi"}/dashboard/tickets/${ticket.id}`,
         });
       }
 

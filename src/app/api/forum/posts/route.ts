@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { sendForumReplyNotification, sendUserNotification } from "@/lib/email";
+import { sendForumReplyNotification, sendUserNotificationById } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -71,10 +71,11 @@ export async function POST(req: Request) {
           "Someone";
 
         // Use prefs-aware notifier (will skip if user disabled forumReplies)
-        await sendUserNotification(topicWithOwner.user.id, "forum", {
-          topicTitle: topicWithOwner.title,
-          excerpt,
-          replierName,
+        await sendUserNotificationById(topicWithOwner.user.id, "forum", {
+          subject: `New reply to "${topicWithOwner.title}"`,
+          message: `${replierName} replied to your topic "${topicWithOwner.title}".`,
+          actionLabel: "View Reply",
+          actionUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://haydenf.fyi"}/forum/${topicWithOwner.category.slug}/${topicWithOwner.id}`,
         });
       }
     } catch (e) {

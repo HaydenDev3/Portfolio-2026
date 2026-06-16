@@ -156,10 +156,13 @@ export async function PATCH(req: Request) {
     // Send "settings updated" notification if the user has the pref (or default)
     try {
       const isSelf = !isImpersonating && !effectiveUser; // rough: not impersonating
-      await (await import("@/lib/email")).sendUserNotification(
+      await (await import("@/lib/email")).sendUserNotificationById(
         effectiveUserId,
         "settings",
-        { byAdmin: !isSelf }
+        {
+          subject: "Account settings updated",
+          message: isSelf ? "Your profile settings were changed." : `Your account was updated by an administrator.`,
+        }
       );
     } catch (e) {
       console.error("Failed to send settings update email:", e);

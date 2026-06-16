@@ -8,7 +8,7 @@ import {
   sendNewTicketNotification,
   sendTicketReplyNotification,
   sendEmail,
-  sendUserNotification,
+  sendUserNotificationById,
 } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -71,10 +71,8 @@ export async function POST(req: Request) {
         await sendForumReplyNotification({
           to,
           topicTitle: data.topicTitle || "How to optimize Next.js performance in 2026",
-          topicSlug: data.topicSlug || "how-to-optimize-nextjs",
           replierName: data.replierName || "Test User",
-          excerpt: data.excerpt || "Great points! I especially liked the part about the new React compiler and how it affects the RSC payload size...",
-          categoryName: data.categoryName || "Development",
+          postUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://haydenf.fyi"}/forum/${data.topicSlug || "general"}/test-post`,
         });
         result = "Forum reply notification sent";
         break;
@@ -83,10 +81,8 @@ export async function POST(req: Request) {
         await sendNewTicketNotification({
           to,
           subject: data.subject || "Help with my deployed site",
-          message: data.message || "Hi, after the recent deploy the images are not loading on mobile. Can you take a look?",
-          ticketId: data.ticketId || "test-ticket-abc123",
-          clientName: data.clientName || "Test Client",
-          isAdminNotification: !!data.isAdminNotification,
+          message: data.message || "Hi, after the recent deploy the images are not loading on mobile.",
+          ticketUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://haydenf.fyi"}/dashboard/tickets/test`,
         });
         result = "New ticket notification sent";
         break;
@@ -95,10 +91,20 @@ export async function POST(req: Request) {
         await sendTicketReplyNotification({
           to,
           ticketSubject: data.ticketSubject || "Help with my deployed site",
-          ticketId: data.ticketId || "test-ticket-abc123",
-          senderName: data.senderName || "Hayden (Support)",
-          message: data.message || "Thanks for the details. I've checked the logs and it looks like a missing env var for the image domain. I'll push a fix shortly.",
-          isReplyFromStaff: data.isReplyFromStaff !== false,
+          replierName: data.senderName || "Hayden (Support)",
+          replyContent: data.replyContent || "Hi! Thanks for reaching out. I'll take a look at the image loading issue right away.",
+          ticketUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://haydenf.fyi"}/dashboard/tickets/test`,
+        });
+        result = "Ticket reply sent";
+        break;
+
+      case "ticket_reply":
+        await sendTicketReplyNotification({
+          to,
+          ticketSubject: data.ticketSubject || "Help with my deployed site",
+          replierName: data.senderName || "Hayden (Support)",
+          replyContent: data.message || "Thanks for the details. I've checked the logs and it looks like a missing env var for the image domain.",
+          ticketUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://haydenf.fyi"}/dashboard/tickets/test`,
         });
         result = "Ticket reply notification sent";
         break;
@@ -116,7 +122,7 @@ export async function POST(req: Request) {
       case "special":
         // Test the new prefs-aware special notification (use userId if provided, else resolve from email)
         if (data.userId) {
-          await sendUserNotification(data.userId, "special", {
+          await sendUserNotificationById(data.userId, "special", {
             subject: data.subject || "Test Special Offer",
             message: data.message || "This is a test special broadcast.",
           });

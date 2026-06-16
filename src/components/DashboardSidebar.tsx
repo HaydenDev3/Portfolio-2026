@@ -20,6 +20,7 @@ import {
   Cog,
   ChevronRight,
   Trash2,
+  Key,
 } from "lucide-react";
 
 interface NavItem {
@@ -95,6 +96,7 @@ const navGroups: NavGroup[] = [
     label: "Data Tools",
     adminOnly: true,
     items: [
+      { label: "Invite Codes", href: "/dashboard/invites", icon: Key },
       { label: "Clear Test Data", href: "/dashboard/data", icon: Trash2 },
       { label: "Badge Manager", href: "/dashboard/badges", icon: Star },
     ],

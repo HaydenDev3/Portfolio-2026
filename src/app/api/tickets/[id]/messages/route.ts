@@ -90,10 +90,9 @@ export async function POST(
           await sendTicketReplyNotification({
             to: recipientEmail,
             ticketSubject: (await prisma.supportTicket.findUnique({ where: { id } }))?.subject || "Support Ticket",
-            ticketId: id,
-            senderName,
-            message: content.trim(),
-            isReplyFromStaff: posterIsStaff,
+            replierName: message.user.name || "Support",
+            replyContent: content.trim(),
+            ticketUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://haydenf.fyi"}/dashboard/tickets/${id}`,
           });
         }
       }

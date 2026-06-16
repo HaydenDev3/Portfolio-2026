@@ -7,7 +7,7 @@ import {
   sendWelcomeEmail,
   sendPaymentReceipt,
   sendAdminNotification,
-  sendUserNotification,
+  sendUserNotificationById,
 } from "@/lib/email";
 import { generateUsername } from "@/lib/username";
 import { generateAvatarDataUrl } from "@/lib/avatar";
@@ -107,9 +107,9 @@ export async function POST(req: Request) {
               message: `${customerName} (${customerEmail}) just purchased ${tier || "package"}${addon ? " + maintenance" : ""}.`,
               details: {
                 email: customerEmail,
-                tier,
-                addon,
-                amount: session.amount_total,
+                tier: tier || "—",
+                addon: addon ? "true" : "false",
+                amount: session.amount_total ? String(session.amount_total) : "—",
               },
             });
           } catch (e) {
@@ -292,9 +292,9 @@ export async function POST(req: Request) {
             // Subscription update notification (if user has pref)
             try {
               if (sub.clientUserId) {
-                await sendUserNotification(sub.clientUserId, "sub", {
-                  description: "Monthly Maintenance (recurring)",
-                  amount: invoice.amount_paid,
+                await sendUserNotificationById(sub.clientUserId, "sub", {
+                  subject: "Subscription renewed",
+                  message: `Your Monthly Maintenance subscription has been renewed ($${(invoice.amount_paid / 100).toFixed(2)}).`,
                 });
               }
             } catch (e) {

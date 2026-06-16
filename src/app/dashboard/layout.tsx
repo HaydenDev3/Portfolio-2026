@@ -89,7 +89,7 @@ export default function DashboardLayout({
   const adminOnlyRoutes = [
     "/dashboard/users", "/dashboard/leads", "/dashboard/forum",
     "/dashboard/testimonials", "/dashboard/settings",
-    "/dashboard/emails", "/dashboard/system", "/dashboard/announcements", "/dashboard/data",
+    "/dashboard/emails", "/dashboard/system", "/dashboard/announcements", "/dashboard/data", "/dashboard/invites",
   ];
 
   const isClient = user?.role === "CLIENT";
