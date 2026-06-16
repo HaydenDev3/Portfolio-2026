@@ -8,746 +8,403 @@ import AccountSettingsModal from "@/components/AccountSettingsModal";
 import { useToast } from "@/components/Toast";
 import PasswordInput from "@/components/PasswordInput";
 import { getPlatformLabel, getSocialIcon } from "@/lib/utils";
-import { Settings } from "lucide-react";
+import {
+  Search, Plus, X, Settings, ExternalLink, Shield, Ban, User,
+  Mail, Phone, Building2, FileText, Calendar, Sparkles,
+  ChevronDown, Save, Eye, Trash2, Users, LogIn,
+} from "lucide-react";
 
-interface User {
-  id: string;
-  name: string | null;
-  email: string;
-  username: string | null;
-  displayName: string | null;
-  image: string | null;
-  banner?: string | null;
-  role: string;
-  banned: boolean;
-  createdAt: string;
-  badges: { badge: string }[];
-  phone?: string | null;
-  company?: string | null;
-  notes?: string | null;
-  clientStatus?: string | null;
-  socialLinks?: Array<{ platform: string; url: string }>;
-  bio?: string | null;
-  isLegacy?: boolean;
+interface UserData {
+  id: string; name: string | null; email: string; username: string | null;
+  displayName: string | null; image: string | null; banner?: string | null;
+  role: string; banned: boolean; createdAt: string; badges: { badge: string }[];
+  phone?: string | null; company?: string | null; notes?: string | null;
+  clientStatus?: string | null; socialLinks?: Array<{ platform: string; url: string }>;
+  bio?: string | null; isLegacy?: boolean;
 }
 
 const BADGE_OPTIONS = ["ADMIN", "VERIFIED", "PRO", "EARLY_SUPPORTER"] as const;
-
 const BADGE_COLORS: Record<string, string> = {
   ADMIN: "bg-red-500/20 text-red-400 border-red-500/30",
-  VERIFIED: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  VERIFIED: "accent-bg-subtle accent-text",
   PRO: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   EARLY_SUPPORTER: "bg-amber-500/20 text-amber-400 border-amber-500/30",
 };
 
+function getInitial(name?: string | null) { return (name || "?").charAt(0).toUpperCase(); }
+
 export default function AdminUsersPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [legacyClients, setLegacyClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [message, setMessage] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [manageUser, setManageUser] = useState<any | null>(null);
+  const [previewUser, setPreviewUser] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Strict client guard + determine role
+  const [newUser, setNewUser] = useState({
+    name: "", email: "", password: "", role: "CLIENT",
+    company: "", phone: "", notes: "", clientStatus: "ACTIVE",
+  });
+
   useEffect(() => {
-    async function checkRole() {
-      try {
-        const res = await fetch("/api/auth/session");
-        if (res.ok) {
-          const data = await res.json();
-          const role = data?.user?.role || data?.role;
-          const admin = role === "ADMIN";
-          setIsAdmin(admin);
-          if (!admin) {
-            router.push("/dashboard");
-            return;
-          }
-        } else {
-          router.push("/auth/login?callbackUrl=/dashboard/users");
-        }
-      } catch {
-        router.push("/dashboard");
-      }
-    }
-    checkRole();
+    fetch("/api/auth/session").then((r) => r.ok && r.json()).then((d) => {
+      if ((d?.user?.role || d?.role) !== "ADMIN") { router.push("/dashboard"); return; }
+      setIsAdmin(true);
+    }).catch(() => router.push("/dashboard"));
   }, [router]);
 
-  // Only show create UI for admins
-  const canCreate = isAdmin;
-
-  const [newName, setNewName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState("CLIENT");
-  const [newCompany, setNewCompany] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newNotes, setNewNotes] = useState("");
-  const [newClientStatus, setNewClientStatus] = useState("ACTIVE");
-  const [creating, setCreating] = useState(false);
-
-  const [selectedUser, setSelectedUser] = useState<any | null>(null);
-  const [previewUser, setPreviewUser] = useState<any | null>(null);
-  // Legacy clients are always merged into this unified view now.
-
   const fetchUsers = useCallback(async (q = "") => {
-    const url = q ? `/api/users?q=${encodeURIComponent(q)}` : "/api/users";
-    const res = await fetch(url);
+    const res = await fetch(q ? `/api/users?q=${encodeURIComponent(q)}` : "/api/users");
     if (res.ok) setUsers(await res.json());
   }, []);
 
-  const fetchLegacyClients = useCallback(async () => {
+  const fetchLegacy = useCallback(async () => {
     const res = await fetch("/api/clients");
     if (res.ok) {
       const json = await res.json();
-      const data = json.data ?? json;
-      // Only unlinked legacy clients (no userId)
-      const unlinked = data.filter((c: any) => !c.userId);
-      setLegacyClients(unlinked);
+      setLegacyClients((json.data ?? json).filter((c: any) => !c.userId));
     }
   }, []);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-    const load = async () => {
-      setLoading(true);
-      await Promise.all([fetchUsers(search), fetchLegacyClients()]);
-      setLoading(false);
-    };
-    load();
-  }, [fetchUsers, fetchLegacyClients, search, isAdmin]);
+  useEffect(() => { if (!isAdmin) return; setLoading(true); Promise.all([fetchUsers(search), fetchLegacy()]).then(() => setLoading(false)); }, [fetchUsers, fetchLegacy, search, isAdmin]);
 
-  const displayList = [
-    ...users.map((u: any) => ({ ...u, isLegacy: false })),
-    ...legacyClients.map((c: any) => ({
-      id: c.id,
-      name: c.name,
-      email: c.email,
-      role: "CLIENT",
-      company: c.company,
-      clientStatus: c.status,
-      createdAt: c.createdAt,
-      isLegacy: true,
-      badges: [],
-      image: null,
-      banned: false,
-      socialLinks: [],
+  const displayList: any[] = [
+    ...users.map((u) => ({ ...u, isLegacy: false })),
+    ...legacyClients.map((c) => ({
+      id: c.id, name: c.name, email: c.email, role: "CLIENT", company: c.company,
+      clientStatus: c.status, createdAt: c.createdAt, isLegacy: true, badges: [],
+      image: null, banner: null, banned: false, socialLinks: [], username: null,
+      displayName: null, phone: null, notes: null, bio: null,
     })),
   ].filter((item: any) => {
     if (!search) return true;
     const s = search.toLowerCase();
-    return (
-      (item.name || "").toLowerCase().includes(s) ||
-      item.email.toLowerCase().includes(s) ||
-      (item.company || "").toLowerCase().includes(s)
-    );
+    return (item.name || "").toLowerCase().includes(s) || item.email.toLowerCase().includes(s) || (item.company || "").toLowerCase().includes(s);
   });
 
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setSelectedUser(null);
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, []);
-
-  // legacy local msg kept for a couple spots, but prefer showToast
-  function msg(text: string) {
-    showToast(text);
+  async function createUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newUser.email || !newUser.password) return;
+    const res = await fetch("/api/users", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newUser),
+    });
+    if (res.ok) {
+      showToast("User created", "success"); setShowCreate(false);
+      setNewUser({ name: "", email: "", password: "", role: "CLIENT", company: "", phone: "", notes: "", clientStatus: "ACTIVE" });
+      fetchUsers(search); fetchLegacy();
+    } else { const d = await res.json(); showToast(d.error || "Failed", "error"); }
   }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newEmail || !newPassword) return;
-    setCreating(true);
-    const res = await fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+  async function saveManageUser() {
+    if (!manageUser || manageUser.isLegacy) return;
+    setSaving(true);
+    const res = await fetch(`/api/users/${manageUser.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: newName || undefined,
-        email: newEmail,
-        password: newPassword,
-        role: newRole,
-        company: newCompany || undefined,
-        phone: newPhone || undefined,
-        notes: newNotes || undefined,
-        clientStatus: newClientStatus,
+        name: manageUser.name, banned: manageUser.banned, role: manageUser.role,
+        company: manageUser.company, phone: manageUser.phone, notes: manageUser.notes,
+        clientStatus: manageUser.clientStatus, socialLinks: manageUser.socialLinks || [],
       }),
     });
-    setCreating(false);
-    if (res.ok) {
-      showToast("User created successfully");
-      setShowCreate(false);
-      setNewName("");
-      setNewEmail("");
-      setNewPassword("");
-      setNewRole("CLIENT");
-      setNewCompany("");
-      setNewPhone("");
-      setNewNotes("");
-      setNewClientStatus("ACTIVE");
-      fetchUsers(search);
-      fetchLegacyClients();
-    } else {
-      const data = await res.json();
-      showToast(data.error ?? "Failed to create user", "error");
-    }
+    if (res.ok) { showToast("Changes saved", "success"); setManageUser(null); fetchUsers(search); }
+    else { const d = await res.json(); showToast(d.error || "Failed", "error"); }
+    setSaving(false);
   }
 
-  async function handleConvertLegacy(legacy: any) {
-    setNewName(legacy.name || "");
-    setNewEmail(legacy.email);
-    setNewCompany(legacy.company || "");
-    setNewPhone(""); // may not have
-    setNewNotes("");
-    setNewClientStatus(legacy.clientStatus || "ACTIVE");
-    setNewRole("CLIENT");
-    setNewPassword("");
-    setShowCreate(true);
-    setSelectedUser(null);
-    showToast("Enter a temporary password and create to provision portal access (will auto-link the legacy client)");
-  }
-
-  async function handleDelete(id: string, email: string) {
-    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
+  async function deleteUser(id: string, email: string) {
+    if (!confirm(`Delete user ${email}?`)) return;
     const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      showToast("User deleted");
-      setSelectedUser(null);
-      fetchUsers(search);
-      fetchLegacyClients();
-    } else {
-      const data = await res.json();
-      showToast(data.error ?? "Failed to delete user", "error");
-    }
-  }
-
-  async function handleBan(id: string, banned: boolean) {
-    const res = await fetch(`/api/users/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ banned }),
-    });
-    if (res.ok) {
-      showToast(banned ? "User banned" : "User unbanned");
-      setSelectedUser(null);
-      fetchUsers(search);
-    } else {
-      const data = await res.json();
-      showToast(data.error ?? "Failed to update user", "error");
-    }
+    if (res.ok) { showToast("User deleted", "success"); setManageUser(null); fetchUsers(search); fetchLegacy(); }
+    else { const d = await res.json(); showToast(d.error || "Failed", "error"); }
   }
 
   async function toggleBadge(userId: string, badge: string) {
-    const res = await fetch("/api/user/badges", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, badge }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      showToast(data.message || "Badge updated");
-      fetchUsers(search);
-      const updated = await fetch(`/api/users?q=${encodeURIComponent(search)}`);
-      if (updated.ok) {
-        const list = await updated.json();
-        setSelectedUser(list.find((u: any) => u.id === userId) ?? null);
-      }
-    }
+    await fetch("/api/user/badges", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, badge }) });
+    fetchUsers(search);
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold gradient-text font-space">User &amp; Client Management</h1>
-          <p className="text-sm text-slate-500 mt-1 font-space">
-            {displayList.length} accounts (portal users + legacy clients merged)
-          </p>
+    <div className="mobile-section">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6 md:mb-8">
+        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
+          <Users size={20} className="accent-text" />
         </div>
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="text-xs px-3 py-1.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 flex items-center gap-1.5 font-space"
-          title="Open your account settings (photos, auth, notifications)"
-        >
-          <Settings size={14} /> My settings
+        <div className="flex-1">
+          <h1 className="text-xl md:text-3xl font-semibold tracking-[-0.5px] text-white font-space">Users</h1>
+          <p className="text-xs md:text-sm text-slate-500 font-space">{displayList.length} accounts</p>
+        </div>
+        <button onClick={() => setSettingsOpen(true)}
+          className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+          <Settings size={16} />
         </button>
-        {canCreate && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowCreate(!showCreate)}
-              className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all font-space"
-            >
-              {showCreate ? "Cancel" : "+ Create User / Provision Client"}
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Toasts handle feedback now (more modern + non-blocking) */}
+      {/* Search + Create */}
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setLoading(true); fetchUsers(e.target.value); }}
+            placeholder="Search by name, email, or company..."
+            className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all" />
+          {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"><X size={12} /></button>}
+        </div>
+        <button onClick={() => setShowCreate(!showCreate)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-black hover:bg-zinc-200 text-sm font-semibold transition-all active:scale-95">
+          <Plus size={15} /> {showCreate ? "Cancel" : "Add User"}
+        </button>
+      </div>
 
-      {canCreate && showCreate && (
-        <form
-          onSubmit={handleCreate}
-          className="glass p-6 rounded-xl border border-white/10 mb-6 space-y-4"
-        >
-          <h3 className="text-sm font-semibold text-white font-space">Create New User</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              placeholder="Name (optional)"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 font-space text-sm"
-            />
-            <input
-              placeholder="Email *"
-              type="email"
-              required
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className="px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 font-space text-sm"
-            />
-            <PasswordInput value={newPassword} onChange={setNewPassword} required minLength={8} placeholder="Password *" />
-            <select
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value)}
-              className="px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white focus:outline-none focus:border-blue-500/50 font-space text-sm"
-            >
-              <option value="CLIENT">Client</option>
-              <option value="ADMIN">Admin</option>
+      {/* Create form */}
+      {showCreate && (
+        <form onSubmit={createUser} className="premium-glass-strong rounded-2xl md:rounded-3xl p-5 md:p-6 mb-6 space-y-4 mobile-section">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles size={15} className="accent-text" />
+            <span className="text-sm font-semibold text-white font-space">New User</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input value={newUser.name} onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} placeholder="Name (optional)"
+              className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all" />
+            <input value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} type="email" required placeholder="Email *"
+              className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all" />
+            <PasswordInput value={newUser.password} onChange={(v) => setNewUser({ ...newUser, password: v })} required minLength={8} placeholder="Password *" />
+            <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+              className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-[var(--accent)]/40 font-space">
+              <option value="CLIENT" className="bg-[#050505]">Client</option>
+              <option value="ADMIN" className="bg-[#050505]">Admin</option>
             </select>
-            {newRole === "CLIENT" && (
+            {newUser.role === "CLIENT" && (
               <>
-                <input
-                  placeholder="Company (optional)"
-                  value={newCompany}
-                  onChange={(e) => setNewCompany(e.target.value)}
-                  className="px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 font-space text-sm"
-                />
-                <input
-                  placeholder="Phone (optional)"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  className="px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 font-space text-sm"
-                />
+                <input value={newUser.company} onChange={(e) => setNewUser({ ...newUser, company: e.target.value })} placeholder="Company"
+                  className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all" />
+                <input value={newUser.phone} onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })} placeholder="Phone"
+                  className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all" />
               </>
             )}
           </div>
-          {newRole === "CLIENT" && (
-            <textarea
-              placeholder="Notes (optional)"
-              value={newNotes}
-              onChange={(e) => setNewNotes(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 font-space text-sm resize-none"
-              rows={2}
-            />
-          )}
-          <button
-            type="submit"
-            disabled={creating}
-            className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 font-space"
-          >
-            {creating ? "Creating..." : "Create User"}
-          </button>
+          <button type="submit" className="px-5 py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-sm font-medium transition-all active:scale-95">Create User</button>
         </form>
       )}
 
-      <div className="mb-4">
-        <input
-          placeholder="Search by name, email, or username..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setLoading(true);
-            fetchUsers(e.target.value);
-          }}
-          className="w-full px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 font-space text-sm"
-        />
-      </div>
-
-      <div className="mb-3 text-xs text-slate-500 font-space">
-        Unified view: All portal accounts (Users with role CLIENT/ADMIN) + any legacy clients from the old separate Clients table are shown here in one list. 
-        Use "Provision Portal" on legacy rows to create a User login for them (auto-links the records).
-      </div>
-
+      {/* User cards */}
       {loading ? (
-        <p className="text-slate-400 font-space">Loading...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="premium-glass-strong rounded-2xl p-5 animate-pulse">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-xl bg-white/5" />
+                <div className="flex-1 space-y-2"><div className="h-4 bg-white/5 rounded w-2/3" /><div className="h-3 bg-white/5 rounded w-1/2" /></div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : displayList.length === 0 ? (
-        <p className="text-slate-500 font-space">No accounts found. Try creating a user or check legacy data.</p>
+        <div className="premium-glass-strong rounded-2xl p-10 text-center">
+          <Users size={20} className="text-slate-600 mx-auto mb-2" />
+          <p className="text-sm text-slate-400 font-space">No accounts found</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayList.map((u: any) => {
-            const initial = (u.displayName || u.name || u.email || "U").charAt(0).toUpperCase();
-            return (
-              <div key={u.id} className="glass rounded-2xl border border-white/10 overflow-hidden flex flex-col transition-all hover:border-white/20 hover:shadow-lg">
-                {/* Banner + overlapping avatar (fixed stacking) */}
-                <div className="relative h-20 bg-gradient-to-br from-blue-600/20 via-purple-500/10 to-transparent" 
-                     style={u.banner ? { backgroundImage: `url(${u.banner})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
-                  {u.isLegacy && <div className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded bg-amber-500/80 text-white font-medium z-10">LEGACY</div>}
-                  {u.banned && <div className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded bg-red-500/80 text-white font-medium z-10">BANNED</div>}
+          {displayList.map((u: any) => (
+            <div key={u.id} className="group premium-card-hover premium-glass-strong rounded-2xl overflow-hidden border border-white/[0.06]">
+              {/* Banner area */}
+              <div className={`h-16 md:h-20 relative ${u.banner ? "" : "bg-gradient-to-br from-[var(--accent)]/10 via-purple-500/5 to-transparent"}`}
+                style={u.banner ? { backgroundImage: `url(${u.banner})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}>
+                {u.isLegacy && <span className="absolute top-2 right-2 text-[8px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-medium z-10 font-space">Legacy</span>}
+                {u.banned && <span className="absolute top-2 left-2 text-[8px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-medium z-10 font-space">Banned</span>}
+              </div>
 
-                  {/* Profile Picture - absolutely positioned over banner for clean overlap */}
-                  <div className="absolute -bottom-6 left-4 w-14 h-14 rounded-2xl ring-2 ring-[#050505] bg-blue-500/20 border border-white/10 overflow-hidden shadow-xl z-20">
-                    {u.image ? (
-                      <img src={u.image} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl font-bold text-blue-400">{initial}</div>
-                    )}
-                  </div>
+              {/* Avatar + info */}
+              <div className="px-4 pb-3 -mt-6 relative">
+                <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl ring-2 ring-[#07070a] bg-gradient-to-br from-[var(--accent)]/20 to-purple-500/20 overflow-hidden shadow-lg">
+                  {u.image ? <img src={u.image} alt="" className="w-full h-full object-cover" /> :
+                    <div className="w-full h-full flex items-center justify-center text-base font-bold accent-text">{getInitial(u.displayName || u.name)}</div>}
+                </div>
+                <div className="mt-1.5">
+                  <div className="font-semibold text-sm text-white truncate font-space">{u.displayName || u.name || "Unnamed"}</div>
+                  <div className="text-[10px] text-slate-500 truncate font-space">{u.email}</div>
                 </div>
 
-                <div className="px-4 pt-8 pb-4 flex-1 flex flex-col">
-                  <div className="min-w-0">
-                    <div className="font-semibold text-white truncate font-space">{u.displayName || u.name || 'Unnamed'}</div>
-                    <div className="text-xs text-zinc-500 truncate">@{u.username || u.email.split('@')[0]}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{u.email}</div>
-                  </div>
-
-                  {/* Badges */}
-                  <div className="mt-2 flex items-center gap-1 flex-wrap">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-semibold font-space ${u.role === "ADMIN" ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-slate-500/20 text-slate-400 border-slate-500/30"}`}>
-                      {u.role}
+                {/* Badges */}
+                <div className="flex items-center gap-1 mt-2 flex-wrap">
+                  <span className={`text-[8px] px-2 py-0.5 rounded-full font-semibold font-space border ${
+                    u.role === "ADMIN" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-white/[0.04] text-slate-400 border-white/10"
+                  }`}>{u.role}</span>
+                  {u.clientStatus && <span className="text-[8px] px-2 py-0.5 rounded-full font-semibold font-space accent-bg-subtle accent-text border-0">{u.clientStatus}</span>}
+                  {(u.badges || []).slice(0, 2).map((b: any) => (
+                    <span key={b.badge} className={`text-[8px] px-1.5 py-0.5 rounded-full border font-semibold font-space ${BADGE_COLORS[b.badge] || "bg-white/[0.04] text-slate-400"}`}>
+                      {b.badge === "VERIFIED" ? "✓" : b.badge.slice(0, 4)}
                     </span>
-                    {u.clientStatus && <span className="text-[9px] px-1.5 py-0.5 rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/30 font-space">{u.clientStatus}</span>}
-                    {(u.badges || []).map((b: any) => (
-                      <span key={b.badge} className={`text-[9px] px-1.5 py-0.5 rounded-full border font-semibold font-space ${BADGE_COLORS[b.badge] || "bg-slate-500/20 text-slate-400 border-slate-500/30"}`}>
-                        {b.badge === "VERIFIED" ? "✓" : b.badge.slice(0,3)}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Connections/Links */}
-                  <div className="mt-2">
-                    {(u.socialLinks || []).length > 0 ? (
-                      <div className="flex gap-1 flex-wrap">
-                        {(u.socialLinks || []).slice(0,4).map((link: any, idx: number) => (
-                          <a key={idx} href={link.url} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-white/5 border border-white/10 text-blue-300 hover:text-blue-400 hover:bg-white/10 transition font-space truncate max-w-[110px]">
-                            {getSocialIcon(link.platform, "w-3 h-3")}
-                            {getPlatformLabel(link.platform)}
-                          </a>
-                        ))}
-                      </div>
-                    ) : <div className="text-[10px] text-slate-500 font-space">No social links</div>}
-                  </div>
-
-                  <div className="mt-auto pt-3 text-[10px] text-slate-400 flex justify-between items-center font-space border-t border-white/10 mt-3">
-                    <span>{u.isLegacy ? "Legacy Client" : "Portal Account"}</span>
-                    <span>Joined {new Date(u.createdAt).toLocaleDateString()}</span>
-                  </div>
+                  ))}
                 </div>
 
-                <div className="border-t border-white/10 p-3 flex gap-2 bg-black/10">
-                  <button onClick={async (e) => {
-                    e.stopPropagation();
+                {/* Actions */}
+                <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/[0.04]">
+                  <button onClick={() => setManageUser(u as any)}
+                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-[10px] font-medium transition-all active:scale-95">
+                    Settings
+                  </button>
+                  <button onClick={async () => {
                     let linkedProjects: any[] = [];
-                    try {
-                      const res = await fetch(`/api/projects?clientUserId=${u.id}`);
-                      if (res.ok) {
-                        const j = await res.json();
-                        linkedProjects = j.data || j;
-                      }
-                    } catch {}
+                    try { const r = await fetch(`/api/projects?clientUserId=${u.id}`); if (r.ok) { const j = await r.json(); linkedProjects = j.data || j; } } catch {}
                     setPreviewUser({ ...u, linkedProjects });
-                  }} className="flex-1 text-xs py-1.5 rounded-lg border border-white/10 text-slate-300 hover:bg-white/5 font-space transition">Preview</button>
-                  {u.username && (
-                    <a href={`/linktree/${u.username}`} target="_blank" onClick={e => e.stopPropagation()} className="flex-1 text-xs py-1.5 rounded-lg border border-white/10 text-blue-400 hover:bg-white/5 font-space transition text-center">Linktree</a>
-                  )}
-                  <button onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }} className="flex-1 text-xs py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium font-space transition">Manage</button>
-                  {isAdmin && !u.isLegacy && u.role === "CLIENT" && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          const res = await fetch("/api/auth/impersonate", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ userId: u.id }),
-                          });
-                          if (res.ok) {
-                            localStorage.setItem("viewAsClient", "true");
-                            showToast(`Logged in as ${u.displayName || u.name || u.email.split("@")[0]} (client view). Exit the view from the header or sidebar to return to admin.`, "success");
-                            router.push("/dashboard");
-                          } else {
-                            const err = await res.json().catch(() => ({}));
-                            showToast(err.error || "Failed to log in as user", "error");
-                          }
-                        } catch {
-                          showToast("Failed to switch to client view", "error");
-                        }
-                      }}
-                      className="text-xs px-2.5 py-1.5 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-space transition"
-                      title="Log in as this user (client view for tickets, profile, linktrees etc.)"
-                    >
-                      Log in as
+                  }} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg premium-glass text-[10px] text-slate-300 hover:text-white transition-all active:scale-95">
+                    <Eye size={10} /> Preview
+                  </button>
+                  {!u.isLegacy && u.role === "CLIENT" && (
+                    <button onClick={async () => {
+                      const res = await fetch("/api/auth/impersonate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: u.id }) });
+                      if (res.ok) { localStorage.setItem("viewAsClient", "true"); showToast(`Logged in as ${u.displayName || u.name}`, "success"); router.push("/dashboard"); }
+                      else showToast("Failed", "error");
+                    }} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-[10px] font-medium transition-all active:scale-95">
+                      <LogIn size={10} /> Impersonate
                     </button>
                   )}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Fluent Full-Featured Settings Management Modal */}
-      {selectedUser && (
-        <div 
-          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setSelectedUser(null); }}
-        >
-          <div className="glass w-full max-w-2xl rounded-2xl border border-white/10 overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Header with Banner + Avatar preview */}
-            <div className="relative h-28 bg-gradient-to-br from-blue-600/20 via-purple-500/10 to-transparent" style={selectedUser.banner ? {backgroundImage: `url(${selectedUser.banner})`, backgroundSize:'cover', backgroundPosition:'center'} : {}}>
-              <div className="absolute inset-0 bg-black/30" />
-              <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end gap-4">
-                <div className="w-16 h-16 rounded-2xl ring-2 ring-[#050505] bg-blue-500/20 border border-white/10 overflow-hidden shrink-0">
-                  {selectedUser.image ? <img src={selectedUser.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-blue-400">{(selectedUser.displayName || selectedUser.name || '?').charAt(0).toUpperCase()}</div>}
-                </div>
-                <div className="pb-1 min-w-0 text-white">
-                  <div className="font-semibold text-lg truncate font-space">{selectedUser.displayName || selectedUser.name}</div>
-                  <div className="text-xs text-white/70 truncate">@{selectedUser.username || selectedUser.email.split('@')[0]} · {selectedUser.email}</div>
-                </div>
-                <div className="ml-auto pb-1">
-                  {selectedUser.isLegacy && <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/80 text-white font-medium">LEGACY</span>}
-                  {selectedUser.banned && <span className="text-[10px] ml-1 px-2 py-0.5 rounded bg-red-500/80 text-white font-medium">BANNED</span>}
-                </div>
+      {/* Management Modal */}
+      {manageUser && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setManageUser(null)}>
+          <div className="w-full max-w-xl premium-glass-strong rounded-2xl md:rounded-3xl border border-white/10 overflow-hidden max-h-[90vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Modal header */}
+            <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center overflow-hidden shrink-0">
+                {manageUser.image ? <img src={manageUser.image} alt="" className="w-full h-full object-cover" /> :
+                  <span className="text-lg font-bold accent-text">{getInitial(manageUser.displayName || manageUser.name)}</span>}
               </div>
-              <button onClick={() => setSelectedUser(null)} className="absolute top-3 right-3 text-white/70 hover:text-white bg-black/40 rounded-full w-7 h-7 flex items-center justify-center">✕</button>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-white text-sm font-space truncate">{manageUser.displayName || manageUser.name || "User"}</div>
+                <div className="text-[10px] text-slate-500 font-space truncate">{manageUser.email} {manageUser.isLegacy && "· Legacy"}</div>
+              </div>
+              <button onClick={() => setManageUser(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all"><X size={15} /></button>
             </div>
 
-            <div className="p-5 overflow-auto space-y-6 text-sm flex-1">
-              {/* Profile Picture & Banner (read-only here, edit in their profile page) */}
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 premium-scrollbar">
+              {/* Badges */}
               <div>
-                <div className="text-xs uppercase text-slate-500 tracking-wider mb-1.5 font-space">Visuals</div>
-                <div className="text-xs text-slate-400">Profile picture and banner are managed from the user's own Profile page or via the global profile editor. Click "Preview" for the public view.</div>
-              </div>
-
-              {/* Badges - view + quick toggle */}
-              <div>
-                <div className="text-xs uppercase text-slate-500 tracking-wider mb-2 font-space">Badges</div>
-                <div className="flex flex-wrap gap-2">
-                  {BADGE_OPTIONS.map(badge => {
-                    const has = (selectedUser.badges || []).some((b:any) => b.badge === badge);
+                <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 font-semibold font-space mb-2">Badges</div>
+                <div className="flex gap-1.5">
+                  {BADGE_OPTIONS.map((badge) => {
+                    const has = (manageUser.badges || []).some((b: any) => b.badge === badge);
                     return (
-                      <button 
-                        key={badge} 
-                        onClick={() => !selectedUser.isLegacy && toggleBadge(selectedUser.id, badge)}
-                        disabled={selectedUser.isLegacy}
-                        className={`text-xs px-3 py-1 rounded-full border transition ${has ? BADGE_COLORS[badge] : 'border-white/10 text-slate-400 hover:bg-white/5'} ${selectedUser.isLegacy ? 'opacity-60' : ''}`}
-                      >
-                        {badge} {has ? '✓' : '+'}
+                      <button key={badge} onClick={() => !manageUser.isLegacy && toggleBadge(manageUser.id, badge)} disabled={manageUser.isLegacy}
+                        className={`text-[10px] px-3 py-1.5 rounded-xl font-medium font-space border transition-all ${has ? BADGE_COLORS[badge] : "border-white/10 text-slate-400 hover:bg-white/5"} ${manageUser.isLegacy ? "opacity-50" : ""}`}>
+                        {badge} {has ? "✓" : ""}
                       </button>
                     );
                   })}
                 </div>
-                {selectedUser.isLegacy && <div className="text-[10px] text-amber-400 mt-1">Legacy records do not support direct badge management until provisioned.</div>}
               </div>
 
-              {/* Connections / Social Links - editable list */}
+              {/* Status */}
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <div className="text-xs uppercase text-slate-500 tracking-wider font-space">Connections / Links</div>
-                  <button 
-                    onClick={() => {
-                      const curr = selectedUser.socialLinks || [];
-                      setSelectedUser({ ...selectedUser, socialLinks: [...curr, { platform: 'website', url: '' }] });
-                    }}
-                    className="text-xs px-3 py-1 rounded border border-white/10 hover:bg-white/5"
-                  >
-                    + Add Link
-                  </button>
+                <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 font-semibold font-space mb-2">Status</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-space font-medium block mb-1">Client Status</label>
+                    <select value={manageUser.clientStatus || "ACTIVE"} onChange={(e) => setManageUser({ ...manageUser, clientStatus: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white focus:outline-none focus:border-[var(--accent)]/40 font-space">
+                      <option className="bg-[#050505]">LEAD</option>
+                      <option className="bg-[#050505]">ACTIVE</option>
+                      <option className="bg-[#050505]">COMPLETED</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-space font-medium block mb-1">Role</label>
+                    <select value={manageUser.role} onChange={(e) => setManageUser({ ...manageUser, role: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white focus:outline-none focus:border-[var(--accent)]/40 font-space">
+                      <option className="bg-[#050505]">CLIENT</option>
+                      <option className="bg-[#050505]">ADMIN</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {(selectedUser.socialLinks || []).length === 0 && <div className="text-xs text-slate-500">No links added yet.</div>}
-                  {(selectedUser.socialLinks || []).map((link: any, idx: number) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <select 
-                        value={link.platform} 
-                        onChange={e => {
-                          const newL = [...(selectedUser.socialLinks || [])];
-                          newL[idx] = { ...newL[idx], platform: e.target.value };
-                          setSelectedUser({ ...selectedUser, socialLinks: newL });
-                        }}
-                        className="bg-slate-800/60 border border-white/10 rounded px-2 py-1 text-xs w-28"
-                      >
-                        <option value="x">𝕏 / X</option>
-                        <option value="linkedin">LinkedIn</option>
-                        <option value="instagram">Instagram</option>
-                        <option value="website">Website</option>
-                        <option value="github">GitHub</option>
-                        <option value="youtube">YouTube</option>
-                        <option value="tiktok">TikTok</option>
-                        <option value="facebook">Facebook</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs shrink-0">
-                        {getSocialIcon(link.platform, "w-3.5 h-3.5")}
-                        <span>{getPlatformLabel(link.platform)}</span>
-                      </div>
-                      <input 
-                        value={link.url} 
-                        onChange={e => {
-                          const newL = [...(selectedUser.socialLinks || [])];
-                          newL[idx] = { ...newL[idx], url: e.target.value };
-                          setSelectedUser({ ...selectedUser, socialLinks: newL });
-                        }}
-                        placeholder="https://..." 
-                        className="flex-1 bg-slate-800/60 border border-white/10 rounded px-3 py-1 text-sm" 
-                      />
-                      <button onClick={() => {
-                        const newL = (selectedUser.socialLinks || []).filter((_:any, i:number) => i !== idx);
-                        setSelectedUser({ ...selectedUser, socialLinks: newL });
-                      }} className="text-red-400/70 hover:text-red-400 px-2">✕</button>
+                <div className="flex items-center gap-2 mt-3">
+                  <input type="checkbox" id="banned" checked={!!manageUser.banned} onChange={(e) => setManageUser({ ...manageUser, banned: e.target.checked })}
+                    className="accent-red-500" />
+                  <label htmlFor="banned" className="text-xs text-slate-400 font-space">Account is banned</label>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div>
+                <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 font-semibold font-space mb-2">Info</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[ 
+                    { label: "Name", val: manageUser.name, key: "name" },
+                    { label: "Email", val: manageUser.email, key: "email" },
+                    { label: "Company", val: manageUser.company, key: "company" },
+                    { label: "Phone", val: manageUser.phone, key: "phone" },
+                  ].map((f) => (
+                    <div key={f.key}>
+                      <label className="text-[10px] text-slate-500 font-space font-medium block mb-1">{f.label}</label>
+                      <input value={f.val || ""} onChange={(e) => setManageUser({ ...manageUser, [f.key]: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all" />
                     </div>
                   ))}
                 </div>
-                {selectedUser.username && (
-                  <a
-                    href={`/linktree/${selectedUser.username}`}
-                    target="_blank"
-                    className="inline-block text-xs text-blue-400 hover:text-blue-300 mt-1 font-space underline-offset-2 hover:underline"
-                  >
-                    Open public Linktree page ↗
-                  </a>
-                )}
+                <div className="mt-3">
+                  <label className="text-[10px] text-slate-500 font-space font-medium block mb-1">Notes</label>
+                  <textarea value={manageUser.notes || ""} onChange={(e) => setManageUser({ ...manageUser, notes: e.target.value })} rows={2}
+                    className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all resize-y" />
+                </div>
               </div>
 
-              {/* Account Status & Dates */}
+              {/* Social links */}
               <div>
-                <div className="text-xs uppercase text-slate-500 tracking-wider mb-2 font-space">Account Status &amp; Dates</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Client Status</label>
-                    <select 
-                      value={selectedUser.clientStatus || 'ACTIVE'} 
-                      onChange={e => setSelectedUser({ ...selectedUser, clientStatus: e.target.value })}
-                      className="w-full bg-slate-800/60 border border-white/10 rounded px-3 py-1.5 text-sm"
-                    >
-                      <option value="LEAD">LEAD</option>
-                      <option value="ACTIVE">ACTIVE</option>
-                      <option value="COMPLETED">COMPLETED</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Banned</label>
-                    <div className="flex items-center h-9">
-                      <input 
-                        type="checkbox" 
-                        checked={!!selectedUser.banned} 
-                        onChange={e => setSelectedUser({ ...selectedUser, banned: e.target.checked })}
-                        className="accent-red-500"
-                      />
-                      <span className="ml-2 text-sm">Account is banned from logging in</span>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] uppercase tracking-[1.5px] text-slate-500 font-semibold font-space">Social Links</span>
+                  <button onClick={() => setManageUser({ ...manageUser, socialLinks: [...(manageUser.socialLinks || []), { platform: "website", url: "" }] })}
+                    className="text-[10px] accent-text hover:opacity-80 font-space font-medium">+ Add</button>
+                </div>
+                <div className="space-y-1.5">
+                  {(manageUser.socialLinks || []).map((link: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <select value={link.platform} onChange={(e) => {
+                        const l = [...(manageUser.socialLinks || [])]; l[i] = { ...l[i], platform: e.target.value };
+                        setManageUser({ ...manageUser, socialLinks: l });
+                      }} className="px-2.5 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-[10px] text-white focus:outline-none font-space">
+                        {["website","x","linkedin","instagram","github","youtube","tiktok","facebook","other"].map((p) => <option key={p} className="bg-[#050505]" value={p}>{p}</option>)}
+                      </select>
+                      <input value={link.url} onChange={(e) => {
+                        const l = [...(manageUser.socialLinks || [])]; l[i] = { ...l[i], url: e.target.value };
+                        setManageUser({ ...manageUser, socialLinks: l });
+                      }} placeholder="https://..." className="flex-1 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 text-xs text-white placeholder:text-slate-600 focus:outline-none font-space" />
+                      <button onClick={() => setManageUser({ ...manageUser, socialLinks: (manageUser.socialLinks || []).filter((_: any, j: number) => j !== i) })}
+                        className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 transition-all"><X size={11} /></button>
                     </div>
-                  </div>
+                  ))}
                 </div>
-
-                {!selectedUser.isLegacy && (
-                  <div className="mt-3">
-                    <label className="text-xs text-slate-400 block mb-1">Role</label>
-                    <select 
-                      value={selectedUser.role} 
-                      onChange={e => setSelectedUser({ ...selectedUser, role: e.target.value })}
-                      className="bg-slate-800/60 border border-white/10 rounded px-3 py-1.5 text-sm"
-                    >
-                      <option value="CLIENT">CLIENT</option>
-                      <option value="ADMIN">ADMIN</option>
-                    </select>
-                  </div>
-                )}
-
-                <div className="mt-3 text-xs text-slate-400">
-                  Joined / Created: <span className="text-slate-300">{new Date(selectedUser.createdAt).toLocaleString()}</span>
-                </div>
-                {selectedUser.isLegacy && <div className="text-[10px] text-amber-400 mt-1">This is a legacy client record. Provision a portal account to give them login access and full profile features.</div>}
               </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-white/10 flex items-center justify-between bg-black/20">
-              <div>
-                {!selectedUser.isLegacy && selectedUser.role !== "ADMIN" && (
-                  <button 
-                    onClick={() => { handleDelete(selectedUser.id, selectedUser.email); setSelectedUser(null); }}
-                    className="text-xs px-3 py-1.5 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10"
-                  >
-                    Delete Account
-                  </button>
-                )}
-              </div>
+            <div className="px-5 py-4 border-t border-white/[0.06] flex items-center justify-between shrink-0">
+              {!manageUser.isLegacy && manageUser.role !== "ADMIN" && (
+                <button onClick={() => { deleteUser(manageUser.id, manageUser.email); }}
+                  className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all font-space">
+                  <Trash2 size={11} /> Delete
+                </button>
+              )}
+              <div className="flex-1" />
               <div className="flex gap-2">
-                <button onClick={() => setSelectedUser(null)} className="px-4 py-2 text-xs rounded-lg border border-white/10 hover:bg-white/5">Close</button>
-
-                {/* "Log in as this user" — technically logs the admin in as the chosen client (effective identity + data) but you stay logged in as admin and can exit the client view. */}
-                {!selectedUser.isLegacy && isAdmin && (
-                  <button
-                    onClick={async () => {
-                      const display = selectedUser.displayName || selectedUser.name || selectedUser.email;
-                      if (!confirm(`Log in as ${display}?\n\nThis will put you into their client view (you will see and manage their overview, tickets, profile, linktrees, linked projects etc. as if you were them).\n\nYou stay logged in as admin underneath — click "Exit client view" in the header or sidebar to return to full admin tools at any time.`)) return;
-
-                      try {
-                        const res = await fetch("/api/auth/impersonate", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ userId: selectedUser.id }),
-                        });
-                        if (res.ok) {
-                          localStorage.setItem("viewAsClient", "true");
-                          showToast(`Logged in as ${display} (client view active). Use "Exit client view" to return to your admin account.`, "success");
-                          setSelectedUser(null);
-                          router.push("/dashboard");
-                        } else {
-                          const err = await res.json().catch(() => ({}));
-                          showToast(err.error || "Failed to log in as user", "error");
-                        }
-                      } catch {
-                        showToast("Failed to switch to client view", "error");
-                      }
-                    }}
-                    className="px-4 py-2 text-xs rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-medium"
-                    title="Log in as this user (client view). Tickets, edits, linktrees etc. will be as them. Exit the view anytime to return to admin."
-                  >
-                    Log in as this user (client view)
-                  </button>
-                )}
-
-                {!selectedUser.isLegacy && (
-                  <button 
-                    onClick={async () => {
-                      try {
-                        const payload: any = {
-                          name: selectedUser.name,
-                          company: selectedUser.company,
-                          phone: selectedUser.phone,
-                          notes: selectedUser.notes,
-                          clientStatus: selectedUser.clientStatus,
-                          banned: selectedUser.banned,
-                          role: selectedUser.role,
-                          socialLinks: selectedUser.socialLinks || [],
-                        };
-                        const res = await fetch(`/api/users/${selectedUser.id}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(payload),
-                        });
-                        if (res.ok) {
-                          showToast('Account settings saved', 'success');
-                          setSelectedUser(null);
-                          fetchUsers(search);
-                          fetchLegacyClients();
-                        } else {
-                          const err = await res.json().catch(()=>({}));
-                          showToast(err.error || 'Failed to save', 'error');
-                        }
-                      } catch (e) {
-                        showToast('Error saving changes', 'error');
-                      }
-                    }}
-                    className="px-4 py-2 text-xs rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium"
-                  >
-                    Save All Changes
+                <button onClick={() => setManageUser(null)} className="px-4 py-2 rounded-lg premium-glass text-xs text-slate-300 hover:text-white transition-all active:scale-95 font-space">Close</button>
+                {!manageUser.isLegacy && (
+                  <button onClick={saveManageUser} disabled={saving}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 disabled:opacity-60 text-xs font-medium transition-all active:scale-95 font-space">
+                    <Save size={12} /> {saving ? "Saving..." : "Save"}
                   </button>
                 )}
               </div>
@@ -756,18 +413,8 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      <ProfilePreviewModal
-        user={previewUser}
-        open={!!previewUser}
-        onClose={() => setPreviewUser(null)}
-        linkedProjects={previewUser?.linkedProjects}
-      />
-
-      {/* Account settings modal trigger for the current admin (more places) */}
-      <AccountSettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-      />
+      <ProfilePreviewModal user={previewUser} open={!!previewUser} onClose={() => setPreviewUser(null)} linkedProjects={previewUser?.linkedProjects} />
+      <AccountSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
