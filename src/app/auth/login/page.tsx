@@ -10,6 +10,13 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSecret, setResetSecret] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetErr, setResetErr] = useState("");
+  const [resetting, setResetting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
@@ -97,7 +104,46 @@ function LoginForm() {
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
+
+          <div className="text-center mt-4 anim-up">
+            <button type="button" onClick={() => setShowReset(!showReset)} className="text-xs text-slate-500 hover:text-blue-400 transition-colors font-space">
+              {showReset ? "Back to Sign In" : "Forgot admin password?"}
+            </button>
+          </div>
         </form>
+
+        {/* Reset form */}
+        {showReset && (
+          <div className="mt-6 pt-6 border-t border-white/10 anim-up">
+            <h3 className="text-sm font-semibold text-white font-space mb-4">Reset Admin Password</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault(); setResetErr(""); setResetMsg(""); setResetting(true);
+              const res = await fetch("/api/auth/reset", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: resetEmail, newPassword: resetNewPassword, adminSecret: resetSecret }),
+              });
+              const data = await res.json();
+              setResetting(false);
+              if (res.ok) { setResetMsg("Password reset! You can now sign in."); setShowReset(false); }
+              else { setResetErr(data.error || "Failed"); }
+            }} className="space-y-3">
+              <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} required placeholder="Admin email"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all" />
+              <PasswordInput value={resetNewPassword} onChange={setResetNewPassword} required minLength={8} placeholder="New password" />
+              <div>
+                <input type="text" value={resetSecret} onChange={(e) => setResetSecret(e.target.value)} required placeholder="AUTH_SECRET (from Vercel env vars)"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[var(--accent)]/40 font-space transition-all" />
+                <p className="text-[9px] text-slate-600 font-space mt-1">This is the AUTH_SECRET value set in Vercel environment variables.</p>
+              </div>
+              {resetErr && <div className="text-xs text-red-400 bg-red-500/10 p-2.5 rounded-xl border border-red-500/20">{resetErr}</div>}
+              {resetMsg && <div className="text-xs text-emerald-400 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">{resetMsg}</div>}
+              <button type="submit" disabled={resetting}
+                className="w-full py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 disabled:opacity-60 text-sm font-medium transition-all font-space">
+                {resetting ? "Resetting..." : "Reset Password"}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
 
       <p className="text-center text-slate-500 text-xs mt-6 anim-up">

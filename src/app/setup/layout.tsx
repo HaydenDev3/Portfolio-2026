@@ -14,8 +14,9 @@ export default async function SetupLayout({
     if (adminCount > 0) {
       redirect("/auth/login");
     }
-  } catch {
-    // DB might not be ready yet during first deploy — allow setup
+  } catch (e) {
+    // DB might not be ready yet — allow setup to proceed
+    console.error("Setup layout guard check failed:", e);
   }
 
   return <>{children}</>;
