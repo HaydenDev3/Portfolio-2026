@@ -32,7 +32,7 @@ export async function GET() {
     }
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json(null, { status: 200 });
     }
 
     // Auto-generate username for any user missing one
