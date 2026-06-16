@@ -17,30 +17,35 @@ export async function POST(req: Request) {
     const results = await prisma.$transaction(async (tx) => {
       const r: Record<string, number> = {};
 
-      r.pollVotes = (await tx.pollVote.deleteMany()).count;
-      r.pollOptions = (await tx.pollOption.deleteMany()).count;
-      r.bookmarks = (await tx.bookmark.deleteMany()).count;
-      r.forumVotes = (await tx.forumVote.deleteMany()).count;
-      r.forumPosts = (await tx.forumPost.deleteMany()).count;
-      r.forumTopics = (await tx.forumTopic.deleteMany()).count;
-      r.ticketMessages = (await tx.ticketMessage.deleteMany()).count;
-      r.supportTickets = (await tx.supportTicket.deleteMany()).count;
-      r.projectComments = (await tx.projectComment.deleteMany()).count;
-      r.projectMeetings = (await tx.projectMeeting.deleteMany()).count;
-      r.timeEntries = (await tx.timeEntry.deleteMany()).count;
-      r.projectMilestones = (await tx.projectMilestone.deleteMany()).count;
-      r.projectTasks = (await tx.projectTask.deleteMany()).count;
-      r.invoices = (await tx.invoice.deleteMany()).count;
-      r.subscriptions = (await tx.subscription.deleteMany()).count;
-      r.projects = (await tx.project.deleteMany()).count;
-      r.testimonials = (await tx.testimonial.deleteMany()).count;
-      r.linktrees = (await tx.linktree.deleteMany()).count;
-      r.leads = (await tx.lead.deleteMany()).count;
-      r.liveViewers = (await tx.liveViewer.deleteMany()).count;
-      r.inviteCodes = (await tx.inviteCode.deleteMany()).count;
-      r.clientRecords = (await tx.client.deleteMany()).count;
-      r.userBadges = (await tx.userBadge.deleteMany()).count;
-      r.users = (await tx.user.deleteMany({ where: { role: { not: "ADMIN" } } })).count;
+      // Wrap each in try-catch so missing tables (pre-migration) don't crash
+      const del = async (name: string, fn: () => Promise<{ count: number }>) => {
+        try { r[name] = (await fn()).count; } catch { r[name] = 0; }
+      };
+
+      await del("pollVotes", () => tx.pollVote.deleteMany());
+      await del("pollOptions", () => tx.pollOption.deleteMany());
+      await del("bookmarks", () => tx.bookmark.deleteMany());
+      await del("forumVotes", () => tx.forumVote.deleteMany());
+      await del("forumPosts", () => tx.forumPost.deleteMany());
+      await del("forumTopics", () => tx.forumTopic.deleteMany());
+      await del("ticketMessages", () => tx.ticketMessage.deleteMany());
+      await del("supportTickets", () => tx.supportTicket.deleteMany());
+      await del("projectComments", () => tx.projectComment.deleteMany());
+      await del("projectMeetings", () => tx.projectMeeting.deleteMany());
+      await del("timeEntries", () => tx.timeEntry.deleteMany());
+      await del("projectMilestones", () => tx.projectMilestone.deleteMany());
+      await del("projectTasks", () => tx.projectTask.deleteMany());
+      await del("invoices", () => tx.invoice.deleteMany());
+      await del("subscriptions", () => tx.subscription.deleteMany());
+      await del("projects", () => tx.project.deleteMany());
+      await del("testimonials", () => tx.testimonial.deleteMany());
+      await del("linktrees", () => tx.linktree.deleteMany());
+      await del("leads", () => tx.lead.deleteMany());
+      await del("liveViewers", () => tx.liveViewer.deleteMany());
+      await del("inviteCodes", () => tx.inviteCode.deleteMany());
+      await del("clientRecords", () => tx.client.deleteMany());
+      await del("userBadges", () => tx.userBadge.deleteMany());
+      await del("users", () => tx.user.deleteMany({ where: { role: { not: "ADMIN" } } }));
 
       return r;
     });
