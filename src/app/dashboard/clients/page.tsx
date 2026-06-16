@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import InfiniteScroll from "@/components/InfiniteScroll";
 import { useToast } from "@/components/Toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface Client {
   id: string;
@@ -30,11 +31,11 @@ export default function ClientsPage() {
     name: "", email: "", phone: "", company: "", notes: "",
   });
   const { showToast } = useToast();
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   async function deleteClient(id: string, name: string) {
-    if (!confirm(`Delete legacy client "${name}"? This cannot be undone.`)) return;
     const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
-    if (res.ok) { showToast("Client deleted", "success"); loadClients(true); }
+    if (res.ok) { showToast("Client deleted", "success"); setConfirmDelete(null); loadClients(true); }
     else { showToast("Failed to delete", "error"); }
   }
 
@@ -200,7 +201,7 @@ export default function ClientsPage() {
                         {new Date(client.createdAt).toLocaleDateString()}
                       </td>
                       <td className="p-3 md:p-4 whitespace-nowrap">
-                        <button onClick={() => deleteClient(client.id, client.name)}
+                        <button onClick={() => setConfirmDelete({ id: client.id, name: client.name })}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
                           <Trash2 size={14} />
                         </button>
@@ -213,6 +214,15 @@ export default function ClientsPage() {
           </div>
         </InfiniteScroll>
       )}
+
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Delete Legacy Client"
+        message={`Permanently delete "${confirmDelete?.name}"? This will remove this legacy client record.`}
+        confirmLabel="Delete"
+        onConfirm={() => confirmDelete && deleteClient(confirmDelete.id, confirmDelete.name)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

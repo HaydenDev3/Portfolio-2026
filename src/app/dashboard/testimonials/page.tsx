@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface Testimonial {
   id: string;
@@ -23,6 +25,7 @@ export default function TestimonialsPage() {
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [form, setForm] = useState({
     clientId: "",
     name: "",
@@ -287,7 +290,7 @@ export default function TestimonialsPage() {
                   {t.isFeatured ? "Featured" : "Feature"}
                 </button>
                 <button
-                  onClick={() => deleteTestimonial(t.id)}
+                  onClick={() => setConfirmDelete(t.id)}
                   className="text-xs px-3 py-1 rounded-full border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all font-space md:ml-auto"
                 >
                   Delete
@@ -297,6 +300,15 @@ export default function TestimonialsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Delete Testimonial"
+        message="Permanently delete this testimonial? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={() => confirmDelete && deleteTestimonial(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

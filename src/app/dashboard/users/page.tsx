@@ -7,6 +7,7 @@ import ProfilePreviewModal from "@/components/ProfilePreviewModal";
 import AccountSettingsModal from "@/components/AccountSettingsModal";
 import { useToast } from "@/components/Toast";
 import PasswordInput from "@/components/PasswordInput";
+import ConfirmModal from "@/components/ConfirmModal";
 import { getPlatformLabel, getSocialIcon } from "@/lib/utils";
 import {
   Search, Plus, X, Settings, ExternalLink, Shield, Ban, User,
@@ -46,6 +47,7 @@ export default function AdminUsersPage() {
   const [manageUser, setManageUser] = useState<any | null>(null);
   const [previewUser, setPreviewUser] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; email: string } | null>(null);
 
   const [newUser, setNewUser] = useState({
     name: "", email: "", password: "", role: "CLIENT",
@@ -119,9 +121,8 @@ export default function AdminUsersPage() {
   }
 
   async function deleteUser(id: string, email: string) {
-    if (!confirm(`Delete user ${email}?`)) return;
     const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-    if (res.ok) { showToast("User deleted", "success"); setManageUser(null); fetchUsers(search); fetchLegacy(); }
+    if (res.ok) { showToast("User deleted", "success"); setManageUser(null); setConfirmDelete(null); fetchUsers(search); fetchLegacy(); }
     else { const d = await res.json(); showToast(d.error || "Failed", "error"); }
   }
 
@@ -393,7 +394,7 @@ export default function AdminUsersPage() {
             {/* Footer */}
             <div className="px-5 py-4 border-t border-white/[0.06] flex items-center justify-between shrink-0">
               {!manageUser.isLegacy && manageUser.role !== "ADMIN" && (
-                <button onClick={() => { deleteUser(manageUser.id, manageUser.email); }}
+                <button onClick={() => setConfirmDelete({ id: manageUser.id, email: manageUser.email })}
                   className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all font-space">
                   <Trash2 size={11} /> Delete
                 </button>
@@ -415,6 +416,15 @@ export default function AdminUsersPage() {
 
       <ProfilePreviewModal user={previewUser} open={!!previewUser} onClose={() => setPreviewUser(null)} linkedProjects={previewUser?.linkedProjects} />
       <AccountSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Delete User"
+        message={`Permanently delete ${confirmDelete?.email}? This will remove their account and all associated data.`}
+        confirmLabel="Delete"
+        onConfirm={() => confirmDelete && deleteUser(confirmDelete.id, confirmDelete.email)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
