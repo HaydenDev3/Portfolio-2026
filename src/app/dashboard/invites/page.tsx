@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/Toast";
+import ShareModal from "@/components/ShareModal";
 import { Plus, Copy, Check, Key, Users, Clock, Sparkles, RefreshCw, Share2 } from "lucide-react";
 
 export default function InvitesPage() {
@@ -12,6 +13,7 @@ export default function InvitesPage() {
   const [maxUses, setMaxUses] = useState(1);
   const [expiresIn, setExpiresIn] = useState(7);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [shareModal, setShareModal] = useState<{ code: string; url: string } | null>(null);
 
   const fetchCodes = async () => {
     setLoading(true);
@@ -135,15 +137,8 @@ export default function InvitesPage() {
                         className="p-1 rounded-lg text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all">
                         {copiedId === c.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                       </button>
-                      <button onClick={async () => {
-                        const url = `${window.location.origin}/auth/register?code=${c.code}`;
-                        if (navigator.share) {
-                          await navigator.share({ title: "Invite Code", text: `Use my invite code: ${c.code}`, url });
-                        } else {
-                          navigator.clipboard.writeText(url);
-                          showToast("Registration link copied", "success");
-                        }
-                      }} className="p-1 rounded-lg text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all" title="Share invite">
+                      <button onClick={() => setShareModal({ code: c.code, url: `${window.location.origin}/auth/register?code=${c.code}` })}
+                        className="p-1 rounded-lg text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all" title="Share invite">
                         <Share2 size={12} />
                       </button>
                     </div>
@@ -197,6 +192,13 @@ export default function InvitesPage() {
           <p className="text-xs text-slate-600 font-space mt-1">Generate codes above for users to sign up with.</p>
         </div>
       )}
+
+      <ShareModal
+        open={!!shareModal}
+        onClose={() => setShareModal(null)}
+        code={shareModal?.code || ""}
+        url={shareModal?.url || ""}
+      />
     </div>
   );
 }
