@@ -72,14 +72,14 @@ function LoginForm() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="anim-up">
             <label htmlFor="email" className="block text-sm text-slate-300 mb-1.5">
-              Email
+              Email or Username
             </label>
             <input
               id="email"
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="you@example.com or username"
               required
               className="w-full px-4 py-2.5 rounded-lg bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 transition-colors"
             />
