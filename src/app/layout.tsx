@@ -18,6 +18,7 @@ const ParticleField = dynamic(() => import("@/components/effects/ParticleField")
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { siteConfig } from "@/lib/config";
+import PWARegister from "@/components/PWARegister";
 
 const baseUrl = siteConfig.url;
 
@@ -327,7 +328,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ShareButton />
         <Analytics />
         <SpeedInsights />
-        <ThemeAccentProvider />
+        <PWARegister />
       </body>
     </html>
   );
