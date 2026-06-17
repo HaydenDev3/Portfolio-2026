@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { sendForumReplyNotification, sendUserNotificationById } from "@/lib/email";
+import { isUserBanned } from "@/lib/ban-check";
 
 export async function POST(req: Request) {
   try {
@@ -9,6 +10,10 @@ export async function POST(req: Request) {
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (user.banned) return NextResponse.json({ error: "You have been banned from posting" }, { status: 403 });
 
     const body = await req.json();
     const { content, topicId } = body;
@@ -31,13 +36,6 @@ export async function POST(req: Request) {
         { error: "Topic is locked" },
         { status: 403 }
       );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const post = await prisma.forumPost.create({

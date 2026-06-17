@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Trash2,
   Key,
+  Shield,
 } from "lucide-react";
 
 interface NavItem {
@@ -85,6 +86,7 @@ const navGroups: NavGroup[] = [
     adminOnly: true,
     items: [
       { label: "Testimonials", href: "/dashboard/testimonials", icon: Star },
+      { label: "Moderation", href: "/dashboard/moderation", icon: Shield },
       { label: "Announcements", href: "/dashboard/announcements", icon: Star },
       { label: "Email Log", href: "/dashboard/emails", icon: FileText },
       { label: "System Health", href: "/dashboard/system", icon: BarChart3 },

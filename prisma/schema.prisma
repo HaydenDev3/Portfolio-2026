@@ -129,9 +129,55 @@ model User {
   clientTestimonials  Testimonial[]   @relation("ClientUserToTestimonials")
   assignedTasks       ProjectTask[]   @relation("AssignedTaskToUser")
   createdInvites      InviteCode[]
+  createdReports      ForumReport[]   @relation("ReportedByUser")
+  assignedReports     ForumReport[]   @relation("ReportAssignedToUser")
+  followers           Follow[]        @relation("FollowedUser")
+  following           Follow[]        @relation("FollowingUser")
   linktrees      Linktree[]  // multiple named linktrees, clients limited to 2, admins unlimited
   createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  updatedAt DateTime   @updatedAt
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+model ForumReport {
+  id          String       @id @default(cuid())
+  topicId     String?
+  postId      String?
+  reportedBy  String
+  reporter    User         @relation("ReportedByUser", fields: [reportedBy], references: [id])
+  reason      String
+  status      ReportStatus @default(PENDING)
+  assignedTo  String?
+  assignee    User?        @relation("ReportAssignedToUser", fields: [assignedTo], references: [id])
+  resolution  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("FollowingUser", fields: [followerId], references: [id])
+  followingId String
+  following   User     @relation("FollowedUser", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now())
+  @@unique([followerId, followingId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "mention", "reply", "follow", "report_update", "announcement"
+  title     String
+  message   String
+  href      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model Linktree {
