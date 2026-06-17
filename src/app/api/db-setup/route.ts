@@ -69,6 +69,18 @@ export async function POST(req: Request) {
       });
     }
 
+    // Ensure default badges exist
+    const defaultBadges = [
+      { name: "VERIFIED", label: "Verified", color: "#3b82f6", icon: "✓" },
+      { name: "PRO", label: "Pro", color: "#8b5cf6", icon: "⭐" },
+      { name: "EARLY_SUPPORTER", label: "Early Supporter", color: "#f59e0b", icon: "🔥" },
+      { name: "ADMIN", label: "Admin", color: "#f43f5e", icon: "⚡" },
+    ];
+    for (const b of defaultBadges) {
+      const existing = await prisma.badge.findUnique({ where: { name: b.name } });
+      if (!existing) await prisma.badge.create({ data: b });
+    }
+
     return NextResponse.json({ message: "Admin user created successfully" });
   } catch (error) {
     console.error("DB setup error:", error);

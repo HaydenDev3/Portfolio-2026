@@ -29,8 +29,9 @@ export const metadata: Metadata = {
   },
     icons: {
       icon: [{ url: "/favicon.ico", sizes: "32x32" }],
-      apple: [],
+      apple: [{ url: "/portrait.webp" }],
     },
+    manifest: "/manifest.json",
   description: siteConfig.description,
   openGraph: {
     title: siteConfig.title,

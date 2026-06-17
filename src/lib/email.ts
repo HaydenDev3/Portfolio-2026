@@ -217,3 +217,18 @@ export async function sendUserNotificationById(
     await sendUserNotification({ to: user.email, ...data });
   } catch {}
 }
+
+export async function sendPasswordResetEmail(params: {
+  to: string; name?: string | null; resetUrl: string;
+}) {
+  const { to, name, resetUrl } = params;
+  const displayName = name || "there";
+  const html = baseLayout(`
+    ${label("Password Reset")}
+    ${h1(`Hi, ${displayName}!`)}
+    <p style="color:#cbd5e1;">A password reset was requested for your account. Click the button below to set a new password.</p>
+    <p style="color:#64748b; font-size:13px;">If you didn't request this, you can safely ignore this email.</p>
+    <div style="text-align:center; margin:24px 0 0;">${btn(resetUrl, "Reset Password")}</div>
+  `);
+  await sendEmail({ to, subject: "Password Reset Request", html });
+}

@@ -86,6 +86,12 @@ function LoginForm() {
             </button>
           </form>
 
+          <div className="mt-3 text-center">
+            <Link href="/auth/forgot-password" className="text-xs text-slate-500 hover:text-blue-400 transition-colors font-space">
+              Forgot password?
+            </Link>
+          </div>
+
           <div className="mt-5 pt-5 border-t border-white/[0.06] space-y-3">
             <button onClick={() => setShowReset(!showReset)}
               className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl premium-glass text-sm text-slate-300 hover:text-white transition-all active:scale-[0.97] font-space">

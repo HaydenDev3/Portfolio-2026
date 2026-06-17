@@ -256,6 +256,9 @@ export default function DashboardLayout({
               </>
             )}
             <span className="text-slate-200 font-medium">{currentPage}</span>
+            {process.env.NEXT_PUBLIC_APP_ENV === "test" && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-space font-medium shrink-0">🧪 TEST</span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-2">

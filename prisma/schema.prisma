@@ -83,6 +83,17 @@ enum BadgeType {
   EARLY_SUPPORTER
 }
 
+model Badge {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  label     String
+  color     String     @default("#3b82f6")
+  icon      String     @default("🏅")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  users     UserBadge[]
+}
+
 model User {
   id             String      @id @default(cuid())
   name           String?
@@ -128,19 +139,30 @@ model Linktree {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   name      String
-  links     Json     // [{ platform: string, url: string }]
+  links     Json     // [{ platform: string, url: string, clicks?: number }]
+  theme     Json?    // { bgColor, buttonStyle, accentColor, fontStyle }
+  viewCount Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, name])
 }
 
+model LinktreeClick {
+  id         String   @id @default(cuid())
+  linktreeId String
+  linkIndex  Int
+  platform   String
+  createdAt  DateTime @default(now())
+}
+
 model UserBadge {
-  id       String    @id @default(cuid())
+  id       String   @id @default(cuid())
   userId   String
-  user     User      @relation(fields: [userId], references: [id])
-  badge    BadgeType
-  earnedAt DateTime  @default(now())
+  user     User     @relation(fields: [userId], references: [id])
+  badge    String
+  badgeRef Badge?   @relation(fields: [badge], references: [name])
+  earnedAt DateTime @default(now())
 
   @@unique([userId, badge])
 }
